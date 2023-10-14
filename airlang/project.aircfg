@@ -1,0 +1,15 @@
+project("test"){
+    arch:x64
+    plat:window
+    mode:debug
+    type:asm
+    build:"./build/"
+    
+    dirs{
+        "E:\\Project\\Compiler"
+    }
+    
+    files{
+        "airlang/pkg.test.air"
+    }
+}

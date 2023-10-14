@@ -1,0 +1,48 @@
+[ ] ( ) { } : :: ; , ...
+. .. ? << >> <<< & ^ | ~ ! && ||
++ - * / % ++ -- = + -= *= /= %=
+<<= >>= <<<= &= ^= |= ~=
+== != > >= < <=
+//你好
+/*
+多行测试
+*/
+"\c\m"
+'你'
+
+@file @line @func @debug @asm @arch //@cc
+
+require using package
+void bool 
+int8 int16 int32 int64
+uint8 uint16 uint32 uint64
+sint uint
+flt32 flt64
+uintptr string char
+nullptr false true
+
+break continue goto return
+
+do while for
+if elsif else
+switch case default
+
+private protected public static const inline override
+
+enum union struct class interface entrust
+
+this super friend
+new sizeof isa cast
+
+try catch finally throw
+
+async await synchronized volatile
+
+/*0
+10
+100
+100.1
+3434.2342
+*/
+0xFF
+0b112

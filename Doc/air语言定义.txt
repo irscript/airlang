@@ -1,0 +1,144 @@
+语言定义
+	整体单元
+	File = Decl* 
+	各种声明
+	Decl = ImportDecl | PkgDecl | ScopeDecl | NativeDecl |
+		   VarDecl | FuncDecl | EnumDecl | StructDecl | 
+		   UnionDecl | InterfaceDecl | ClassDecl | 
+	表达式
+	Exp = BaseExp| DotExp | UnaryExp | BinaryExp | TernaryExp | NewExp
+	BaseExp = IdentExp | ConstExp | FunCallExp | IndexExp | ThisExp | SuperExp
+	DotExp = BaseExp ['.' BaseExp]*
+	UnaryExp = ['op']* BaseExp
+	BinaryExp = Exp 'op' Exp
+	TernaryExp = Exp '?' Exp ':' Exp
+	
+	依赖申明
+	ImportDecl = ImportItem | '{' ImportItem* '}'
+	ImportItem = 'id' '=' 'string' ';'
+	包声明
+	PkgDecl = package 'id'( '.' 'id')* ';'
+	全局作用域声明
+	ScopeDecl = ( 'public' | 'protected' | 'private') ':'
+	变量声明
+	VarDecl = Scope Type 'id' [=initExp] ';'
+	Scope = ['public' | 'protected' | 'private'| 'extern' | 'static'] 
+	Type = ['const' ] 'id'( '.' 'id')*
+	函数申明
+	VarDecl = Scope Type 'id''(' [ arglist] ')'[override] [const] [final] (';' |  funbody )
+	arglist = argitem (',' argitem)*
+	argitem = type ['id']
+	funbody = BlkState
+	BlkState = '{' [Statement] '}'
+	Statement = ( BlkState | ExpState | IfState | ElseifState |
+				  ElseState | SwitchState | ForState | DoState |
+				  WhileState | GotoState | BreakState | ContinueState |
+				  ReturnState )*
+	
+	本地声明
+	NativeDecl = dllimport 'id' '{' ( TypeDecl | FuncDecl )* '}'
+	TypeDecl = EnumDecl | StructDecl |  UnionDecl |EntrustDecl
+	FuncDecl = Type 'id''(' [ arglist] ')' '=' Serial
+	Serial = 'u32'
+	枚举声明
+	EnumDecl = 'enum' id [: BaseType]'{' EnumItem* '}'
+	BaseType = 基本整数类型
+	EnumItem = 'id'[=initExp] ','
+	
+代码结构
+依赖单元
+	Import file=“dir/file.ext” ;
+或者
+	Import{
+		Import file=“dir/file.ext” ;
+		Import file2=“dir/file2.ext” ;
+	}
+包声明
+	package pkg.pkg2;
+枚举定义
+	enum name:int32{
+	item=initExp,
+	item2=initExp,
+	…
+	}
+结构体定义
+	Struct name{
+		Int32 i32;
+		Union｛
+			Int32 s32;
+			Flt32 f32;
+	｝
+	}
+联合体定义
+	Union name{
+		Int32 s32;
+		Flt32 f32;
+		Struct{…}
+	}
+接口定义
+	Interface IFather{
+	void eat(int32 arg);
+}
+Interface IFather2{
+	void say(int32 arg);
+}
+Interface IChild :[ IFather,IFather2 ]{
+	void walk(int32 arg);
+}
+类定义
+Class Parent {
+Private:
+	Int32 mI32;
+Public	Flt32 mF32;
+Public:
+	Void print(){}
+Protected void toString(){}
+	Virtual void vfun()=0;
+}
+Class child: Parent :[ IChild ]{
+	void eat(int32 arg) override{}
+	void say(int32 arg) override{}
+	void walk(int32 arg) override{}
+	void vfun()override{}
+}
+
+
+模板函数
+Void tfun<type,type2 >(int arg){
+	For(int32 i=0;i<32;++i){
+		Airlang.print(arg+i);
+	}
+}
+模板类
+Class tclass<type,type2>{
+}
+模板函数、类需要实例化才能使用
+Using classi32= tclass<int32,int32>;
+Using funi32= tfun< int32,int32 >;
+函数委托类型
+Entrust FunCall=( int32,flt32 )->flt32;
+匿名函数对象
+FunCall obj=[]( int32 a,flt32 b )->flt32{return a+b;}
+接口、类函数委托类型
+Entrust FunCall=IFather(int32,flt32)->flt32;
+
+
+any类型
+64bit
+·—————————————————————————·
+| 64位类型指针域 | 64位值域 |
+·—————————————————————————·
+32bit
+·—————————————————————————·
+| 32位类型指针域 | 64位值域 |
+·—————————————————————————·
+
+对象模型
+·————————————————·
+| 对象头 | 内存块 |
+·————————————————·
+对象头
+·——————————————————————————————·
+| 引用计数 | 对象标记 | 类型指针 |
+|  int32  | 对象标记 | 类型指针 |
+·——————————————————————————————·

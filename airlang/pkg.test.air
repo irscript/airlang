@@ -1,0 +1,14 @@
+package air.test;
+
+import test="airlang/lexer.test.air";
+import {
+    test2="airlang/lexer.test2.air";
+    test3="airlang/lexer.test3.air";
+}
+
+public:
+
+enum Test:sint{
+    a=true,
+    b=false,
+}

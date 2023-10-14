@@ -1,0 +1,7 @@
+打印汇编代码
+-exec disassemble /m
+或者
+-exec disassemble /m main
+
+-exec info registers
+得到寄存器的信息

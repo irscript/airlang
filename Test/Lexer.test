@@ -1,0 +1,34 @@
+#include <Utils/StringPool.h>
+#include <Lexer/Scanner.h>
+
+using namespace std;
+using namespace air;
+
+int main(int argc, char **argv)
+{
+    system("chcp 65001");
+    system("cls");
+
+    Print("\n开始编译程序");
+    Print("\n-----------------------------------------------------------\n\n");
+
+    Scanner::InitMap();
+    string szPath = "E:\\Project\\Compiler\\airlang\\dig.test.air", szFile = "dig.test";
+    Scanner scan;
+    scan.setStream(szPath, &szFile);
+    while (1)
+    {
+        auto tok = scan.next();
+        if (tok.kind != TkKind::Eol)
+            Print(tok.toString().c_str());
+        else
+            Print("\n");
+        if (tok.kind == TkKind::Error ||
+            tok.kind == TkKind::Eof)
+            break;
+    }
+
+    Print("\n结束编译程序");
+    Print("\n-----------------------------------------------------------\n\n");
+    return 0;
+}

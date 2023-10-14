@@ -1,0 +1,830 @@
+#include <Lexer/Scanner.h>
+#include "Scanner.h"
+
+namespace air
+{
+    std::map<std::string, KeyEnum> Scanner::keyMap;     // 关键字
+    std::map<std::string, MacroEnum> Scanner::macroMap; // 宏关键字
+
+    void Scanner::InitMap()
+    {
+        // macroMap.insert({"",MacroEnum::});
+        macroMap.insert({"@file", MacroEnum::File});
+        macroMap.insert({"@line", MacroEnum::Line});
+        macroMap.insert({"@func", MacroEnum::Func});
+        macroMap.insert({"@debug", MacroEnum::Debug});
+        macroMap.insert({"@asm", MacroEnum::Asm});
+        macroMap.insert({"@arch", MacroEnum::Arch});
+
+        // keyMap.insert({"",KeyEnum::});
+
+        keyMap.insert({"require", KeyEnum::Require});
+        keyMap.insert({"using", KeyEnum::Using});
+        keyMap.insert({"package", KeyEnum::Package});
+
+        keyMap.insert({"void", KeyEnum::Void});
+        keyMap.insert({"bool", KeyEnum::Bool});
+        keyMap.insert({"int8", KeyEnum::Int8});
+        keyMap.insert({"int16", KeyEnum::Int16});
+        keyMap.insert({"int32", KeyEnum::Int32});
+        keyMap.insert({"int64", KeyEnum::Int64});
+        keyMap.insert({"uint8", KeyEnum::UInt8});
+        keyMap.insert({"uint16", KeyEnum::UInt16});
+        keyMap.insert({"uint32", KeyEnum::UInt32});
+        keyMap.insert({"uint64", KeyEnum::UInt64});
+        keyMap.insert({"sint", KeyEnum::SInt});
+        keyMap.insert({"uint", KeyEnum::UInt});
+
+        keyMap.insert({"flt32", KeyEnum::Flt32});
+        keyMap.insert({"flt64", KeyEnum::Flt64});
+
+        keyMap.insert({"uintptr", KeyEnum::Uintptr});
+        // keyMap.insert({"string", KeyEnum::String});
+        keyMap.insert({"char", KeyEnum::Char});
+
+        keyMap.insert({"nullptr", KeyEnum::Nullptr});
+        keyMap.insert({"false", KeyEnum::False});
+        keyMap.insert({"true", KeyEnum::True});
+
+        keyMap.insert({"break", KeyEnum::Break});
+        keyMap.insert({"continue", KeyEnum::Continue});
+        keyMap.insert({"goto", KeyEnum::Goto});
+        keyMap.insert({"return", KeyEnum::Return});
+
+        keyMap.insert({"do", KeyEnum::Do});
+        keyMap.insert({"while", KeyEnum::While});
+        keyMap.insert({"for", KeyEnum::For});
+
+        keyMap.insert({"if", KeyEnum::If});
+        keyMap.insert({"elsif", KeyEnum::Elsif});
+        keyMap.insert({"else", KeyEnum::Else});
+
+        keyMap.insert({"switch", KeyEnum::Switch});
+        keyMap.insert({"case", KeyEnum::Case});
+        keyMap.insert({"default", KeyEnum::Default});
+
+        keyMap.insert({"private", KeyEnum::Private});
+        keyMap.insert({"protected", KeyEnum::Protected});
+        keyMap.insert({"public", KeyEnum::Public});
+
+        keyMap.insert({"static", KeyEnum::Static});
+        keyMap.insert({"const", KeyEnum::Const});
+        keyMap.insert({"inline", KeyEnum::Inline});
+        keyMap.insert({"override", KeyEnum::Override});
+
+        keyMap.insert({"enum", KeyEnum::Enum});
+        keyMap.insert({"union", KeyEnum::Union});
+        keyMap.insert({"struct", KeyEnum::Struct});
+        keyMap.insert({"class", KeyEnum::Class});
+        keyMap.insert({"interface", KeyEnum::Interface});
+        keyMap.insert({"entrust", KeyEnum::Entrust});
+
+        keyMap.insert({"this", KeyEnum::This});
+        keyMap.insert({"super", KeyEnum::Super});
+        keyMap.insert({"friend", KeyEnum::Friend});
+
+        keyMap.insert({"new", KeyEnum::New});
+        keyMap.insert({"sizeof", KeyEnum::Sizeof});
+        keyMap.insert({"isa", KeyEnum::IsA});
+        keyMap.insert({"cast", KeyEnum::Cast});
+
+        keyMap.insert({"try", KeyEnum::Try});
+        keyMap.insert({"catch", KeyEnum::Catch});
+        keyMap.insert({"finally", KeyEnum::Finally});
+        keyMap.insert({"throw", KeyEnum::Throw});
+
+        keyMap.insert({"async", KeyEnum::Async});
+        keyMap.insert({"await", KeyEnum::Await});
+        keyMap.insert({"synchronized", KeyEnum::Synchronized});
+        keyMap.insert({"volatile", KeyEnum::Volatile});
+    }
+    // 设置字符串流
+    bool Scanner::setStream(const std::string &src, const std::string *file)
+    {
+        tokens.clear();
+        if (file == nullptr)
+        {
+            stream.setData(src);
+            return true;
+        }
+        return stream.read(src, file);
+    }
+    // 获取下一个单词
+    Token Scanner::next()
+    {
+        if (tokens.empty() == true)
+        {
+            auto tok = getAToken();
+            lastPos = tok.pos;
+            return tok;
+        }
+        auto tok = tokens.front();
+        tokens.pop_front();
+        lastPos = tok.pos;
+        return tok;
+    }
+    // 查看后面第一个单词
+    Token Scanner::peek()
+    {
+        if (tokens.empty() == true)
+        {
+            auto tok = getAToken();
+            tokens.push_back(tok);
+            return tok;
+        }
+        auto tok = tokens.front();
+        return tok;
+    }
+    // 查看后面第二个单词
+    Token Scanner::peek2()
+    {
+        if (tokens.size() < 2)
+        {
+            auto tok = getAToken();
+            tokens.push_back(tok);
+        }
+        auto it = tokens.begin();
+        ++it;
+        return *(it);
+    }
+
+    // 解析一个单词
+    Token Scanner::getAToken()
+    {
+        // 跳过空白字符
+        skipWhiteSpaces();
+
+        auto pos = stream.getCurPos();
+        // Print("begine:%d size:%d\n", pos.begin, stream.data.size());
+        // 是否是读取结束
+        if (stream.eof() == true)
+            return Token(TkKind::Eof, "EOF", pos);
+
+        auto ch = stream.peek();
+        // 解析标识符
+        if (stream.ischar_() == true)
+            return getIdentToken();
+        // 解析整数或者浮点常量
+        if (stream.isdigital() == true)
+            return getDigitToken();
+        // 解析宏关键字
+        if (ch == '@')
+            return getMacroToken();
+        // 解析字符常量
+        if (ch == '\'')
+            return getCharToken();
+        // 解析字符串常量
+        if (ch == '"')
+            return getStringToken();
+        // 解析操作符或者分隔符
+        return getOPToken();
+    }
+    // 解析操作符或者分隔符
+    Token Scanner::getOPToken()
+    {
+        auto ch = stream.peek();
+        auto pos = stream.getCurPos();
+        switch (ch)
+        {
+        // 下一行
+        case '\n':
+        {
+            stream.next();
+            return Token(TkKind::Eol, "EOL", pos);
+        }
+            //--------解析分隔符----------
+        case '(':
+        {
+            stream.pos += 1;
+            return Token(TkKind::Seperator, ch, pos, SpEnum::OpenParen);
+        }
+        break;
+        case ')':
+        {
+            stream.pos += 1;
+            return Token(TkKind::Seperator, ch, pos, SpEnum::CloseParen);
+        }
+        break;
+        case '[':
+        {
+            stream.pos += 1;
+            return Token(TkKind::Seperator, ch, pos, SpEnum::OpenBracket);
+        }
+        break;
+        case ']':
+        {
+            stream.pos += 1;
+            return Token(TkKind::Seperator, ch, pos, SpEnum::CloseBracket);
+        }
+        break;
+        case '{':
+        {
+            stream.pos += 1;
+            return Token(TkKind::Seperator, ch, pos, SpEnum::OpenBrace);
+        }
+        break;
+        case '}':
+        {
+            stream.pos += 1;
+            return Token(TkKind::Seperator, ch, pos, SpEnum::CloseBrace);
+        }
+        break;
+        case ':':
+        {
+            if (stream.check(':', 1) == true)
+            {
+                pos.end++;
+                stream.pos += 2;
+                return Token(TkKind::Seperator, "::", pos, SpEnum::Colon2);
+            }
+            stream.pos += 1;
+            return Token(TkKind::Seperator, ":", pos, SpEnum::Colon);
+        }
+        break;
+        case ',':
+        {
+            stream.pos += 1;
+            return Token(TkKind::Seperator, ch, pos, SpEnum::Comma);
+        }
+        break;
+        case ';':
+        {
+            stream.pos += 1;
+            return Token(TkKind::Seperator, ch, pos, SpEnum::SemiColon);
+        }
+        break;
+        //--------解析操作符----------
+        case '.':
+        {
+            if (stream.check(ch, 1) == true)
+            {
+                if (stream.check(ch, 2) == true)
+                {
+                    pos.end += 2;
+                    stream.pos += 3;
+                    return Token(TkKind::Seperator, "...", pos, SpEnum::Ellipsis);
+                }
+                ++pos.end;
+                stream.pos += 2;
+                return Token(TkKind::Operaor, "..", pos, OpEnum::Range);
+            }
+            stream.pos += 1;
+            return Token(TkKind::Operaor, ch, pos, OpEnum::Dot);
+        }
+        break;
+        case '?':
+        {
+            stream.pos += 1;
+            return Token(TkKind::Operaor, ch, pos, OpEnum::Question);
+        }
+        break;
+        case '>':
+        {
+            // >>
+            if (stream.check(ch, 1) == true)
+            {
+                // >>=
+                if (stream.check('=', 2) == true)
+                {
+                    pos.end += 2;
+                    stream.pos += 3;
+                    return Token(TkKind::Operaor, ">>=", pos, OpEnum::LeftShiftAssign);
+                }
+                pos.end += 1;
+                stream.pos += 2;
+                return Token(TkKind::Operaor, ">>", pos, OpEnum::LeftShift);
+            }
+            stream.pos += 1;
+            return Token(TkKind::Operaor, ch, pos, OpEnum::GT);
+        }
+        break;
+        case '<':
+        { // <<
+            if (stream.check(ch, 1) == true)
+            {
+                // <<<
+                if (stream.check(ch, 2) == true)
+                {
+                    // <<<=
+                    if (stream.check('=', 3) == true)
+                    {
+                        pos.end += 3;
+                        stream.pos += 4;
+                        return Token(TkKind::Operaor, "<<<=", pos, OpEnum::LogicalRightShiftAssign);
+                    }
+                    pos.end += 2;
+                    stream.pos += 3;
+                    return Token(TkKind::Operaor, "<<<", pos, OpEnum::LogicalRightShift);
+                } // <<=
+                if (stream.check('=', 2) == true)
+                {
+                    pos.end += 2;
+                    stream.pos += 3;
+                    return Token(TkKind::Operaor, "<<=", pos, OpEnum::RightShiftAssign);
+                }
+                pos.end += 1;
+                stream.pos += 2;
+                return Token(TkKind::Operaor, "<<", pos, OpEnum::RightShift);
+            }
+            stream.pos += 1;
+            return Token(TkKind::Operaor, ch, pos, OpEnum::LT);
+        }
+        break;
+        case '&':
+        {
+            // &&
+            if (stream.check(ch, 1) == true)
+            {
+                pos.end += 1;
+                stream.pos += 2;
+                return Token(TkKind::Operaor, "&&", pos, OpEnum::And);
+            }
+            // &=
+            if (stream.check('=', 1) == true)
+            {
+                pos.end += 1;
+                stream.pos += 2;
+                return Token(TkKind::Operaor, "&=", pos, OpEnum::BitAndAssign);
+            }
+            stream.pos += 1;
+            return Token(TkKind::Operaor, ch, pos, OpEnum::BitAnd);
+        }
+        case '^':
+        {
+            // ^=
+            if (stream.check('=', 1) == true)
+            {
+                pos.end += 1;
+                stream.pos += 2;
+                return Token(TkKind::Operaor, "^=", pos, OpEnum::BitXOrAssign);
+            }
+            stream.pos += 1;
+            return Token(TkKind::Operaor, ch, pos, OpEnum::BitXOr);
+        }
+        case '|':
+        {
+            // ||
+            if (stream.check(ch, 1) == true)
+            {
+                pos.end += 1;
+                stream.pos += 2;
+                return Token(TkKind::Operaor, "||", pos, OpEnum::Or);
+            }
+            // |=
+            if (stream.check('=', 1) == true)
+            {
+                pos.end += 1;
+                stream.pos += 2;
+                return Token(TkKind::Operaor, "|=", pos, OpEnum::BitOrAssign);
+            }
+            stream.pos += 1;
+            return Token(TkKind::Operaor, ch, pos, OpEnum::BitOr);
+        }
+        case '~':
+        {
+            // ~=
+            if (stream.check('=', 1) == true)
+            {
+                pos.end += 1;
+                stream.pos += 2;
+                return Token(TkKind::Operaor, "~=", pos, OpEnum::BitNotAssign);
+            }
+            stream.pos += 1;
+            return Token(TkKind::Operaor, ch, pos, OpEnum::BitNot);
+        }
+        break;
+        case '!':
+        {
+            // !=
+            if (stream.check('=', 1) == true)
+            {
+                pos.end += 1;
+                stream.pos += 2;
+                return Token(TkKind::Operaor, "!=", pos, OpEnum::NE);
+            }
+            stream.pos += 1;
+            return Token(TkKind::Operaor, ch, pos, OpEnum::Not);
+        }
+        break;
+        case '+':
+        {
+            // +=
+            if (stream.check('=', 1) == true)
+            {
+                pos.end += 1;
+                stream.pos += 2;
+                return Token(TkKind::Operaor, "+=", pos, OpEnum::PlusAssign);
+            } // ++
+            if (stream.check('=', 1) == true)
+            {
+                pos.end += 1;
+                stream.pos += 2;
+                return Token(TkKind::Operaor, "++", pos, OpEnum::Plus2);
+            }
+            stream.pos += 1;
+            return Token(TkKind::Operaor, ch, pos, OpEnum::Plus);
+        }
+        break;
+        case '-':
+        {
+            // -=
+            if (stream.check('=', 1) == true)
+            {
+                pos.end += 1;
+                stream.pos += 2;
+                return Token(TkKind::Operaor, "-=", pos, OpEnum::MinusAssign);
+            } // --
+            if (stream.check('-', 1) == true)
+            {
+                pos.end += 1;
+                stream.pos += 2;
+                return Token(TkKind::Operaor, "--", pos, OpEnum::Minus2);
+            }
+            stream.pos += 1;
+            return Token(TkKind::Operaor, ch, pos, OpEnum::Minus);
+        }
+        break;
+        case '*':
+        {
+            // *=
+            if (stream.check('=', 1) == true)
+            {
+                pos.end += 1;
+                stream.pos += 2;
+                return Token(TkKind::Operaor, "*=", pos, OpEnum::MulAssign);
+            }
+            stream.pos += 1;
+            return Token(TkKind::Operaor, ch, pos, OpEnum::Multiply);
+        }
+        break;
+        case '/':
+        {
+            // 单行注释
+            if (stream.check('/', 1) == true)
+            {
+                return getSinComment();
+            }
+            // 多行注释
+            if (stream.check('*', 1) == true)
+            {
+                return getMulComment();
+            }
+            // /=
+            if (stream.check('=', 1) == true)
+            {
+                pos.end += 1;
+                stream.pos += 2;
+                return Token(TkKind::Operaor, "/=", pos, OpEnum::DivAssign);
+            }
+            stream.pos += 1;
+            return Token(TkKind::Operaor, ch, pos, OpEnum::Divide);
+        }
+        break;
+        case '%':
+        {
+            // %=
+            if (stream.check('=', 1) == true)
+            {
+                pos.end += 1;
+                stream.pos += 2;
+                return Token(TkKind::Operaor, "%=", pos, OpEnum::ModAssign);
+            }
+            stream.pos += 1;
+            return Token(TkKind::Operaor, ch, pos, OpEnum::Modulus);
+        }
+        break;
+        case '=':
+        {
+            // ==
+            if (stream.check('=', 1) == true)
+            {
+                pos.end += 1;
+                stream.pos += 2;
+                return Token(TkKind::Operaor, "==", pos, OpEnum::EQ);
+            }
+            stream.pos += 1;
+            return Token(TkKind::Operaor, ch, pos, OpEnum::Assign);
+        }
+        break;
+        }
+        Error("未能识别词法规则！%s\n", pos.toString().c_str());
+        return Token(TkKind::Error, ch, pos);
+    }
+    // 解析一个单行注释
+    Token Scanner::getSinComment()
+    {
+        auto pos = stream.getCurPos();
+        auto ch1 = stream.peek();
+        auto ch2 = stream.peek(1);
+        if (ch1 != '/' || ch2 != '/')
+            return Token(TkKind::Notes, "", pos);
+
+        stream.pos += 2;
+        std::string notes;
+        while (1)
+        {
+            auto ch = stream.peek();
+            if (ch == '\n' || ch == '\0')
+                break;
+            stream.pos += 1;
+            notes.push_back(ch);
+        }
+        stream.next();
+        pos.end = stream.pos;
+        return Token(TkKind::Notes, notes, pos);
+    }
+    // 解析多行注释
+    Token Scanner::getMulComment()
+    {
+        auto pos = stream.getCurPos();
+        auto ch1 = stream.peek();
+        auto ch2 = stream.peek(1);
+        if (ch1 != '/' || ch2 != '*')
+            return Token(TkKind::Notes, "", pos);
+
+        stream.pos += 2;
+        std::string notes;
+        while (1)
+        {
+            auto ch = stream.peek();
+            if (ch == '*' && stream.peek(1) == '/')
+                break;
+            if (ch == '\0')
+            {
+                Error("缺少[ 多行注释 结束符：*/] %s\n", stream.getCurPos().toString().c_str());
+                return Token(TkKind::Eof, "", pos);
+            }
+            stream.next();
+            notes.push_back(ch);
+        }
+        stream.pos += 2;
+        pos.end = stream.pos;
+        return Token(TkKind::Notes, notes, pos);
+    }
+    // 解析字符串常量
+    Token Scanner::getStringToken()
+    {
+        auto pos = stream.getCurPos();
+        stream.next();
+        std::string szBuf;
+        auto ch = stream.peek();
+        while (stream.eof() == false && stream.peek() != '"')
+        {
+            auto ch = stream.peek();
+            // 过滤显式多行
+            if (ch == '\r' || ch == '\n')
+            {
+                stream.next();
+                continue;
+            }
+            // 转义字符
+            if (ch == '\\')
+            {
+                stream.next();
+                ch = stream.peek();
+                switch (ch)
+                {
+                case '\\':
+                    szBuf.push_back('\\');
+                    stream.next();
+                    continue;
+                case '"':
+                    szBuf.push_back('"');
+                    stream.next();
+                    continue;
+                case '0':
+                    szBuf.push_back('\0');
+                    stream.next();
+                    continue;
+                case 'a':
+                    szBuf.push_back('\a');
+                    stream.next();
+                    continue;
+                case 'b':
+                    szBuf.push_back('\b');
+                    stream.next();
+                    continue;
+                case 'f':
+                    szBuf.push_back('\f');
+                    stream.next();
+                    continue;
+                case 'n':
+                    szBuf.push_back('\n');
+                    stream.next();
+                    continue;
+                case 'r':
+                    szBuf.push_back('\r');
+                    stream.next();
+                    continue;
+                case 't':
+                    szBuf.push_back('\t');
+                    stream.next();
+                    continue;
+                case 'v':
+                    szBuf.push_back('\v');
+                    stream.next();
+                    continue;
+                }
+                Waring("未知转义字符：\\%c %s", ch, stream.getCurPos().toString().c_str());
+                szBuf.push_back('\\');
+                continue;
+            }
+            szBuf.push_back(ch);
+            stream.next();
+        }
+        pos.end = stream.pos;
+        if (stream.eof() == true)
+            Error("缺少[ 字符串常量 结束符号：\"] %s", stream.getCurPos().toString().c_str());
+        else
+            stream.next();
+        return Token(TkKind::StringLiteral, szBuf, pos);
+    }
+    // 解析标识符
+    Token Scanner::getIdentToken()
+    {
+        auto pos = stream.getCurPos();
+        std::string szBuf;
+        while (stream.eof() == false &&
+               stream.isident() == true)
+        {
+            szBuf.push_back(stream.next());
+        }
+        pos.end = stream.pos;
+        auto find = keyMap.find(szBuf);
+        if (find == keyMap.end())
+            return Token(TkKind::Identifier, szBuf, pos);
+        return Token(TkKind::KeyWord, szBuf, pos, find->second);
+    }
+    // 解析宏关键字
+    Token Scanner::getMacroToken()
+    {
+        auto pos = stream.getCurPos();
+        std::string szBuf;
+        stream.next();
+        szBuf.push_back('@');
+        while (stream.eof() == false &&
+               stream.isident() == true)
+        {
+            szBuf.push_back(stream.next());
+        }
+        pos.end = stream.pos;
+        pos.end = stream.pos;
+        auto find = macroMap.find(szBuf);
+        if (find == macroMap.end())
+            return Token(TkKind::Error, szBuf, pos);
+        return Token(TkKind::Macro, szBuf, pos, find->second);
+    }
+    // 解析字符常量
+    Token Scanner::getCharToken()
+    {
+        auto pos = stream.getCurPos();
+        stream.next();
+        std::string szBuf;
+        auto ch = stream.peek();
+        while (stream.eof() == false && stream.peek() != '\'')
+        {
+            auto ch = stream.peek();
+            // 转义字符
+            if (ch == '\\')
+            {
+                stream.next();
+                ch = stream.peek();
+                switch (ch)
+                {
+                case '\\':
+                    szBuf.push_back('\\');
+                    stream.next();
+                    continue;
+                case '"':
+                    szBuf.push_back('"');
+                    stream.next();
+                    continue;
+                case '0':
+                    szBuf.push_back('\0');
+                    stream.next();
+                    continue;
+                case 'a':
+                    szBuf.push_back('\a');
+                    stream.next();
+                    continue;
+                case 'b':
+                    szBuf.push_back('\b');
+                    stream.next();
+                    continue;
+                case 'f':
+                    szBuf.push_back('\f');
+                    stream.next();
+                    continue;
+                case 'n':
+                    szBuf.push_back('\n');
+                    stream.next();
+                    continue;
+                case 'r':
+                    szBuf.push_back('\r');
+                    stream.next();
+                    continue;
+                case 't':
+                    szBuf.push_back('\t');
+                    stream.next();
+                    continue;
+                case 'v':
+                    szBuf.push_back('\v');
+                    stream.next();
+                    continue;
+                }
+                Waring("未知转义字符：\\%c %s", ch, stream.getCurPos().toString().c_str());
+                szBuf.push_back('\\');
+                continue;
+            }
+            szBuf.push_back(ch);
+            stream.next();
+        }
+        pos.end = stream.pos;
+        if (stream.eof() == true)
+            Error("缺少[ 字符常量 结束符号：' ] %s\n", stream.getCurPos().toString().c_str());
+        else
+            stream.next();
+        return Token(TkKind::CharLiteral, szBuf, pos);
+    }
+    // 解析整数或者浮点常量
+    Token Scanner::getDigitToken()
+    {
+        auto pos = stream.getCurPos();
+        auto ch = stream.peek();
+
+        if (ch == '0')
+        {
+            stream.next();
+
+            auto ch1 = stream.peek();
+            switch (ch1)
+            {
+                // 16进制
+            case 'X':
+            case 'x':
+            {
+                std::string szHex = "0x";
+                stream.next();
+                while (stream.ishex() == true)
+                {
+                    szHex.push_back(stream.next());
+                }
+                pos.end = stream.pos;
+                if (szHex.size() == 2)
+                {
+                    Error("请输入完整的十六进制!\n");
+                    return Token(TkKind::Error, "", pos);
+                }
+                return Token(TkKind::IntegerLiteral, szHex, pos);
+            }
+            // 2进制
+            break;
+            case 'B':
+            case 'b':
+            {
+                std::string szBin = "0b";
+                stream.next();
+                while (stream.isbin() == true)
+                {
+                    szBin.push_back(stream.next());
+                }
+                pos.end = stream.pos;
+                if (szBin.size() == 2)
+                {
+                    Error("请输入完整的二进制!\n");
+                    return Token(TkKind::Error, "", pos);
+                }
+                return Token(TkKind::IntegerLiteral, szBin, pos);
+            }
+            break;
+            }
+            return Token(TkKind::IntegerLiteral, "0", pos);
+        }
+
+        std::string szBuf;
+        while (stream.isdigital() || stream.peek() == '.')
+        {
+            if (stream.peek() == '.')
+            {
+                szBuf.push_back(stream.next());
+                auto tok = getFltToken(szBuf);
+                tok.pos = pos;
+                tok.pos.end = stream.pos;
+                return tok;
+            }
+            szBuf.push_back(stream.next());
+        }
+        pos.end = stream.pos;
+        return Token(TkKind::IntegerLiteral, szBuf, pos);
+    }
+
+    Token air::Scanner::getFltToken(std::string szBuf)
+    {
+        while (stream.isdigital())
+        {
+            szBuf.push_back(stream.next());
+        }
+        auto pos = stream.getCurPos();
+        return Token(TkKind::FloatLiteral, szBuf, pos);
+    }
+}

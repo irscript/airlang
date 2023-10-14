@@ -1,0 +1,16 @@
+ uint64_t a = 0xFFFFFFFFFFFFFFFFull, b = 12;
+    auto c = a;
+    Binary asmer;
+    asmer.MovI32(0xFFFF, gGReg[Register::rax],true);
+    // asmer.Add32(gGReg[Register::rax], gGReg[Register::rax]);
+    // asmer.Mov(gGReg[Register::rcx], gGReg[Register::rax]);
+    asmer.Ret();
+
+    auto code = VirtualAlloc(nullptr, asmer.GetSize(), MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+    if (code != nullptr)
+    {
+        memcpy(code, asmer.GetData(), asmer.GetSize());
+        auto func = (int64_t(*)(int64_t, int64_t))code;
+        auto ret = func(a, b);
+        Info("运行结果：%llx=%llx\n", c,ret);
+    }

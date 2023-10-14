@@ -1,0 +1,28 @@
+项目描述
+    目标架构：x86 x64 
+    目标平台：window linux
+    编译模式：debug release
+    输出模式：c asm obj lib dll bin
+    构建目录：
+    包目录：
+    编译文件：
+
+
+案例：
+
+project("项目名称"){
+    arch:x64
+    plat:window
+    mode:debug
+    type:asm
+    build:"./build/"
+    
+    dirs{
+        "a/b"
+        "b/c"
+    }
+    files{
+        "d.air"
+        "e.air"
+    }
+}

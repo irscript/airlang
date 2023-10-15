@@ -9,6 +9,6 @@ import {
 public:
 
 enum Test:sint{
-    a=true,
-    b=false,
+    a=true ? 10 :11,
+    b=(10+2)*2.5,
 }

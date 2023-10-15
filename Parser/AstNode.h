@@ -236,6 +236,8 @@ namespace air
         AstFlag mFlag; // 变量权限标记
         AstType mType; // 变量类型信息
 
+        StringRef mName; // 变量名称
+
         AstExpRef mInitExp; // 初始值表达式
 
         std::vector<AstExpRef> mArrCol; // 静态数组维度值表达式
@@ -255,7 +257,8 @@ namespace air
     struct FunctionDecl : public IAstDecl
     {
         AstFlag mFlag;                  // 函数权限标记
-        AstType mReturn;                // 函数返回值
+        AstType mRetType;               // 函数返回值类型
+        StringRef mName;                // 函数名称
         std::vector<ParamItem> mParams; // 参数声明列表
         AstStmRef mFuncBody;            // 函数体
 
@@ -272,7 +275,7 @@ namespace air
     // 枚举声明
     struct EnumDecl : public IAstDecl
     {
-        StringRef mName;              // 名称
+        StringRef mName;              // 枚举类型名称
         StringRef mBaseType;          // 基础类型
         std::vector<EnumItem> mEnums; // 枚举项声明列表
 
@@ -283,25 +286,16 @@ namespace air
     // 结构体声明
     struct StructDecl : public IAstDecl
     {
-        StringRef mName;                  // 名称
+        StringRef mName;                  // 结构体名称
         std::vector<AstDeclRef> mMembers; // 成员声明
         StructDecl() : IAstDecl(DeclKind::Struct)
-        {
-        }
-    };
-    // 联合体声明
-    struct UnionDecl : public IAstDecl
-    {
-        StringRef mName;                  // 名称
-        std::vector<AstDeclRef> mMembers; // 成员声明
-        UnionDecl() : IAstDecl(DeclKind::Union)
         {
         }
     };
     // 委托声明
     struct EntrustDecl : public IAstDecl
     {
-        StringRef mName;                // 名称
+        StringRef mName;                // 委托名称
         AstFlag mFlag;                  // 函数权限标记
         AstType mReturn;                // 函数返回值
         std::vector<ParamItem> mParams; // 参数声明列表
@@ -312,7 +306,7 @@ namespace air
     // 接口声明
     struct InterfaceDecl : public IAstDecl
     {
-        StringRef mName;                    // 名称
+        StringRef mName;                    // 接口名称
         std::vector<FunctionDecl> mMembers; // 函数声明
         InterfaceDecl() : IAstDecl(DeclKind::Interface)
         {
@@ -321,7 +315,7 @@ namespace air
     // 类声明
     struct ClassDecl : public IAstDecl
     {
-        StringRef mName;                  // 名称
+        StringRef mName;                  // 类名称
         std::vector<AstDeclRef> mMembers; // 成员声明
         ClassDecl() : IAstDecl(DeclKind::Class)
         {

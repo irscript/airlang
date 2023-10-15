@@ -36,12 +36,15 @@ namespace air
         // 解析类型
         void Type(AstType &type);
 
+        // 解析函数
+        void Function(FunctionDecl &fundecl);
+        // 解析参数列表
+        void ParamList(std::vector<ParamItem> &list);
+
         // 解析枚举
         AstDeclRef Enum(ScopeEnum scope);
         // 解析结构体
         AstDeclRef Struct(ScopeEnum scope);
-        // 解析联合体
-        AstDeclRef Union(ScopeEnum scope);
         // 解析委托
         AstDeclRef Entrust(ScopeEnum scope);
         // 解析接口

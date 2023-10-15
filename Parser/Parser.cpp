@@ -174,6 +174,7 @@ namespace air
         // 1.解析作用域标记
         Front3PScope(defaultScope, scope);
         flag.mScope = scope;
+        auto startpos = mLexer.GetCurPos();
         // 2.解析类型声明
         auto tok = mLexer.GetNext();
         if (tok.kind == TkKind::KeyWord)
@@ -185,9 +186,6 @@ namespace air
                 break;
             case KeyEnum::Struct:
                 return Struct(scope);
-                break;
-            case KeyEnum::Union:
-                return Union(scope);
                 break;
             case KeyEnum::Entrust:
                 return Entrust(scope);
@@ -204,10 +202,71 @@ namespace air
         // 2.解析类型
         Type(type);
         // 3.解析名称
+        tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Identifier)
+        {
+            Error("line:%d\n", tok.pos.mLine);
+            Error("tok:%s\n", tok.text.c_str());
+            throw ErrorExpception("缺少名称！");
+        }
+        auto name = mPool.RefString(tok.text);
 
         // 4.判断是否是函数
+        tok = mLexer.GetNext();
+        if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::OpenParen)
+        {
+            FunctionDecl *decl = nullptr;
+            auto decref = GenDecl(decl);
+            decl->mFlag = flag;
+            decl->mRetType = type;
+            decl->mName = name;
+            decl->mStartPos = startpos;
+            Function(*decl);
+            return decref;
+        }
 
-        return AstDeclRef();
+        // 5、解析变量声明
+
+        VariableDecl *decl = nullptr;
+        auto decref = GenDecl(decl);
+        decl->mFlag = flag;
+        decl->mType = type;
+        decl->mName = name;
+        decl->mStartPos = startpos;
+
+        // 6、静态数组: id[exp,exp]
+        if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::OpenBracket)
+        {
+            while (true)
+            {
+                decl->mArrCol.push_back(Expression());
+                tok = mLexer.GetNext();
+                if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::Comma)
+                    continue;
+                if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::CloseBracket)
+                    break;
+                Error("line:%d\n", tok.pos.mLine);
+                Error("tok:%s\n", tok.text.c_str());
+                throw ErrorExpception("缺少符号 ']' ！");
+            }
+            tok = mLexer.GetNext();
+        }
+
+        // 7、初始值表达式
+        if (tok.kind == TkKind::Operaor && tok.code.op == OpEnum::Assign)
+        {
+            decl->mInitExp = Expression();
+            tok = mLexer.GetNext();
+        }
+        decl->mEndPos = mLexer.GetCurPos();
+        // 8、确认分号 ;
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::SemiColon)
+        {
+            Error("line:%d\n", tok.pos.mLine);
+            Error("tok:%s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号 ';' ！");
+        }
+        return decref;
     }
     // 3P: public | private | protected
     void Parser::Front3PScope(ScopeEnum &defaultScope, ScopeEnum &currentScope)
@@ -420,6 +479,57 @@ namespace air
         }
     }
 
+    void Parser::Function(FunctionDecl &fundecl)
+    {
+        // 1、解析参数列表
+        ParamList(fundecl.mParams);
+        auto tok = mLexer.GetNext();
+        // 2、解析修饰后缀
+        PostFlag(fundecl.mFlag);
+        // 3、只有声明
+        if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::SemiColon)
+            return;
+        // 4、解析函数体
+        if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::OpenBrace)
+        {
+        }
+        // 错误
+        Error("line:%d\n", tok.pos.mLine);
+        Error("tok:%s\n", tok.text.c_str());
+        throw ErrorExpception("缺少符号 ';' ！");
+    }
+    // 参数声明类表：( type name, type name,...)
+    void Parser::ParamList(std::vector<ParamItem> &list)
+    {
+        auto tok = mLexer.GetNext();
+        // 无参数
+        if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::CloseParen)
+            return;
+        while (true)
+        {
+            auto &item = list.emplace_back();
+            // 解析类型
+            Type(item.mType);
+            // 解析名称
+            tok = mLexer.GetNext();
+            if (tok.kind == TkKind::Identifier)
+            {
+                item.mName = mPool.RefString(tok.text);
+                tok = mLexer.GetNext();
+            }
+            // 逗号，
+            if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::Comma)
+                continue;
+            // 结束
+            if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::CloseParen)
+                break;
+            // 错误
+            Error("line:%d\n", tok.pos.mLine);
+            Error("tok:%s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号 ')' ！");
+        }
+    }
+
     // 语法：enum name:basetype{ name=exp [,name=exp]*}
     AstDeclRef Parser::Enum(ScopeEnum scope)
     {
@@ -514,11 +624,6 @@ namespace air
     }
 
     AstDeclRef Parser::Struct(ScopeEnum scope)
-    {
-        return AstDeclRef();
-    }
-
-    AstDeclRef Parser::Union(ScopeEnum scope)
     {
         return AstDeclRef();
     }
@@ -721,7 +826,7 @@ namespace air
             uint64_t val = 0;
             StringRef type = nullptr;
             // 有符号常量表达式
-            if (tok.GetIntVal(val, type))
+            if (tok.GetIntVal(val, mPool, type))
             {
                 IntExp *exp = nullptr;
                 auto expres = GenExp(exp, type, val);
@@ -744,7 +849,7 @@ namespace air
             auto expres = GenExp(exp);
             exp->mStartPos = tok.pos;
             exp->mEndPos = mLexer.GetCurPos();
-            tok.GetFltVal(exp->mValue, exp->mType);
+            tok.GetFltVal(exp->mValue, mPool, exp->mType);
             return expres;
         }
         break;
@@ -946,7 +1051,7 @@ namespace air
 
         // 获取操作符
         auto tok = mLexer.GetNext();
-        int32_t priority = -1;
+        int32_t priority = INT32_MAX;
         // 不是操作符
         if (tok.kind != TkKind::Operaor)
         {
@@ -955,7 +1060,7 @@ namespace air
         }
         // 查找二元操作符
         priority = MapTable::FindOpPriority(tok.code.op);
-        if (priority == -1)
+        if (priority == INT32_MAX)
         {
             // 是不是？：表达式
             if (tok.code.op == OpEnum::Question)

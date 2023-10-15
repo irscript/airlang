@@ -37,7 +37,7 @@ namespace air
         {
             auto find = OpPriorityMap.find(op);
             if (find == OpPriorityMap.end())
-                return -1;
+                return INT32_MAX;
             return find->second;
         }
 

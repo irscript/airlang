@@ -88,9 +88,9 @@ namespace air
         // 获取字符常量的值
         void GetCharVal(uint32_t &val);
         // 获取整数常量的值:true,有符号整数；false，无符号整数
-        bool GetIntVal(uint64_t &val, StringRef &type);
+        bool GetIntVal(uint64_t &val, StringPool &pool, StringRef &type);
         // 获取浮点常量的值
-        void GetFltVal(flt64_t &val, StringRef &type);
+        void GetFltVal(flt64_t &val, StringPool &pool, StringRef &type);
     };
 
 }

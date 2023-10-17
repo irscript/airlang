@@ -4,6 +4,7 @@
 #include "Project.h"
 #include <Utils/FileHelp.h>
 #include <Parser/Parser.h>
+#include <Parser/AstDump.h>
 namespace air
 {
     ProjectCenter ProjectCenter::mInstance;
@@ -316,7 +317,14 @@ namespace air
             }
         }
         if (errcnt == 0)
-            Info("[ 100 %% ]: 编译完成！");
+        {
+            Info("[ 100 %% ]: 编译完成！\n");
+            for (auto unit : mFileUnits.mFileUnits)
+            {
+                AstDumper dump(unit.second);
+            }
+        }
+
         else
             Print("编译结束！总数：%4u\t正确: %4u\t错误: %4u\n", total, total - errcnt, errcnt);
     }
@@ -354,7 +362,7 @@ namespace air
             return;
 
         // 生成对应的文件单元
-        auto unit = mFileUnits.GetFileUint(fileRef);
+        auto& unit = mFileUnits.GetFileUint(fileRef);
         // 开始语法解析
         Parser parser(unit, mStringPool, mFilePath);
     }

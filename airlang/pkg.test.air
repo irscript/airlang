@@ -12,3 +12,5 @@ enum Test:sint{
     a=true ? 10 :11,
     b=(10+2)*2.5,
 }
+
+int32 var[4],bar[3,3];

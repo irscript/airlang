@@ -69,6 +69,26 @@ namespace air
         AstExpRef TernaryExpression(AstExpRef &cond);
 
         //------------------语句-------------------
+        // 解析块语句
+        void BlockStatement(BlockStm &stm);
+        // 解析变量定义语句
+        bool VarStatement(BlockStm &stm);
+        // if*系列语句
+        AstStmRef IfStatement();
+        AstStmRef ElsifStatement();
+        AstStmRef ElseStatement();
+        // switch*系列语句
+        AstStmRef SwitchStatement();
+        AstStmRef CaseStatement();
+        AstStmRef DefaultStatement();
+        // for*系列语句
+        AstStmRef ForStatement();
+        AstStmRef WhileStatement();
+        AstStmRef DoWhileStatement();
+        // try*系列语句
+        AstStmRef TryStatement();
+        AstStmRef CatchStatement();
+        AstStmRef FinallyStatement();
     };
 }
 

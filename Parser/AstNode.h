@@ -176,29 +176,35 @@ namespace air
     // 语句类别
     enum class StmKind : uint32_t
     {
-        Unknown,  // 未知语句
-        Block,    // 块语句
-        If,       // if语句
-        Else,     // else语句
-        Elsif,    // elsif语句
-        Switch,   // switch语句
-        Case,     // case语句
-        Default,  // default语句
-        For,      // for语句
-        Foreach,  // foreach语句
-        While,    // while语句
-        DoWhile,  // do{}while语句
-        Try,      // try语句
-        Trow,     // trow语句
-        Catch,    // catch语句
-        Finally,  // finally语句
+        Unknown, // 未知语句
+        Block,   // 块语句
+
+        If,    // if语句
+        Else,  // else语句
+        Elsif, // elsif语句
+
+        Switch,  // switch语句
+        Case,    // case语句
+        Default, // default语句
+
+        For,     // for语句
+        Foreach, // foreach语句
+        While,   // while语句
+        DoWhile, // do{}while语句
+
+        Try,     // try语句
+        Trow,    // trow语句
+        Catch,   // catch语句
+        Finally, // finally语句
+
         Label,    // 标签语句
+        Goto,     // goto语句
         Break,    // break语句
         Continue, // continue语句
         Return,   // return语句
-        Goto,     // goto语句
-        Exp,      // 表达式语句
-        Var,      // 变量声明语句
+
+        Exp, // 表达式语句
+        Var, // 变量声明语句
 
     };
 
@@ -222,12 +228,40 @@ namespace air
         instance = new Stm(arg...);
         return AstStmRef(instance);
     }
-    // 块语句
-    struct BloskStm : public IAstStm
+
+    // 块语句类型
+    enum class BlockKind : uint32_t
     {
-        BloskStm() : IAstStm(StmKind::Block) {}
+        Unknown,  // 未知
+        Function, // 函数块
+        Normal,   // 普通块
+
+        If,
+        Elsif,
+        Else,
+
+        Switch,
+        Case,
+        Default,
+
+        For,
+        Foreach,
+        While,
+        DoWhile,
+
+        Try,
+        Catch,
+        Finally,
+
+    };
+    // 块语句
+    struct BlockStm : public IAstStm
+    {
+        BlockStm(BlockKind kind, StmKind stm = StmKind::Block) : IAstStm(stm), mBlockKind(kind) {}
 
         std::list<AstStmRef> mStatement; // 块内部语句
+
+        BlockKind mBlockKind; // 块类型
     };
     //----------------------声明-------------
     // 变量声明
@@ -241,6 +275,8 @@ namespace air
         AstExpRef mInitExp; // 初始值表达式
 
         std::vector<AstExpRef> mArrCol; // 静态数组维度值表达式
+
+        std::vector<AstDeclRef> mVarItems; // 同行逗号定义的变量
 
         VariableDecl() : IAstDecl(DeclKind::Var)
         {
@@ -260,9 +296,9 @@ namespace air
         AstType mRetType;               // 函数返回值类型
         StringRef mName;                // 函数名称
         std::vector<ParamItem> mParams; // 参数声明列表
-        AstStmRef mFuncBody;            // 函数体
+        BlockStm mFuncBody;             // 函数体
 
-        FunctionDecl() : IAstDecl(DeclKind::Func)
+        FunctionDecl() : IAstDecl(DeclKind::Func), mFuncBody(BlockKind::Function)
         {
         }
     };
@@ -287,6 +323,7 @@ namespace air
     struct StructDecl : public IAstDecl
     {
         StringRef mName;                  // 结构体名称
+        std::vector<StringRef> mParent;   // 父类结构体
         std::vector<AstDeclRef> mMembers; // 成员声明
         StructDecl() : IAstDecl(DeclKind::Struct)
         {
@@ -315,8 +352,10 @@ namespace air
     // 类声明
     struct ClassDecl : public IAstDecl
     {
-        StringRef mName;                  // 类名称
-        std::vector<AstDeclRef> mMembers; // 成员声明
+        StringRef mName;                                 // 类名称
+        std::vector<StringRef> mParent;                  // 父类
+        std::vector<std::vector<StringRef>> mInterfaces; // 接口列表
+        std::vector<AstDeclRef> mMembers;                // 成员声明
         ClassDecl() : IAstDecl(DeclKind::Class)
         {
         }
@@ -488,7 +527,153 @@ namespace air
     };
 
     //----------------------语句-------------
-    struct ExpStm; // 表达式语句
+    // 变量定义语句
+    struct VarStm : public IAstStm
+    {
+        VarStm() : IAstStm(StmKind::Var) {}
+        AstDeclRef mVarItem; // 变量定义
+    };
+    // 表达式语句
+    struct ExpStm : public IAstStm
+    {
+        ExpStm(AstExpRef exp) : IAstStm(StmKind::Exp), mExp(exp) {}
+
+        AstExpRef mExp; // 表达式
+    };
+    // if语句
+    struct IfStm : public IAstStm
+    {
+        IfStm() : IAstStm(StmKind::If), mBlock(BlockKind::If) {}
+
+        BlockStm mBlock; // 块语句
+
+        AstExpRef mCondExp; // 条件表达式
+
+        std::vector<AstStmRef> mElsifs;
+        AstStmRef mElse;
+    };
+    // else语句
+    struct ElsifStm : public IAstStm
+    {
+        ElsifStm() : IAstStm(StmKind::Elsif), mBlock(BlockKind::Elsif) {}
+        AstExpRef mCondExp; // 条件表达式
+        BlockStm mBlock;    // 块语句
+    };
+    // elsif语句
+    struct ElseStm : public IAstStm
+    {
+        ElseStm() : IAstStm(StmKind::Else), mBlock(BlockKind::Else) {}
+
+        BlockStm mBlock; // 块语句
+    };
+    // switch语句
+    struct SwitchStm : public BlockStm
+    {
+        SwitchStm() : BlockStm(BlockKind::Switch) {}
+        AstExpRef mCondExp;            // 条件表达式
+        std::vector<AstStmRef> mCases; // 选择语句集
+        AstStmRef mDefault;            // 默认处理语句
+    };
+    // case语句
+    struct CaseStm : public IAstStm
+    {
+        CaseStm() : IAstStm(StmKind::Case), mBlock(BlockKind::Case) {}
+        AstExpRef mCondExp; // 条件表达式
+        BlockStm mBlock;    // 块语句
+    };
+    // default语句
+    struct DefaultStm : public IAstStm
+    {
+        DefaultStm() : IAstStm(StmKind::Default), mBlock(BlockKind::Default) {}
+
+        BlockStm mBlock; // 块语句
+    };
+    // for语句
+    struct ForStm : public IAstStm
+    {
+        ForStm() : IAstStm(StmKind::For), mBlock(BlockKind::For) {}
+        std::vector<AstExpRef> mInitExp; // 初始条件表达式
+        AstExpRef mCondExp;              // 结束条件表达式
+        std::vector<AstExpRef> mValExp;  // 值更新表达式
+        BlockStm mBlock;                 // 块语句
+    };
+    // foreach语句
+    struct ForeachStm : public IAstStm
+    {
+        ForeachStm() : IAstStm(StmKind::Foreach), mBlock(BlockKind::Foreach) {}
+        BlockStm mBlock; // 块语句
+    };
+    // while语句
+    struct WhileStm : public IAstStm
+    {
+        WhileStm() : IAstStm(StmKind::While), mBlock(BlockKind::While) {}
+        BlockStm mBlock;    // 块语句
+        AstExpRef mCondExp; // 结束条件表达式
+    };
+    // do{}while语句
+    struct DoWhileStm : public IAstStm
+    {
+        DoWhileStm() : IAstStm(StmKind::DoWhile), mBlock(BlockKind::DoWhile) {}
+        BlockStm mBlock;    // 块语句
+        AstExpRef mCondExp; // 结束条件表达式
+    };
+    // try语句
+    struct TryStm : public IAstStm
+    {
+        TryStm() : IAstStm(StmKind::Try), mBlock(BlockKind::Try) {}
+
+        BlockStm mBlock; // 块语句
+    };
+    // trow语句
+    struct TrowStm : public IAstStm
+    {
+        TrowStm() : IAstStm(StmKind::Trow) {}
+
+        AstExpRef mExp; // 抛出异常表达式
+    };
+    // catch语句
+    struct CatchStm : public IAstStm
+    {
+        CatchStm() : IAstStm(StmKind::Catch), mBlock(BlockKind::Catch) {}
+
+        BlockStm mBlock; // 块语句
+    };
+    // finally语句
+    struct FinallyStm : public IAstStm
+    {
+        FinallyStm() : IAstStm(StmKind::Finally), mBlock(BlockKind::Finally) {}
+
+        BlockStm mBlock; // 块语句
+    };
+    // 标签语句
+    struct LabelStm : public IAstStm
+    {
+        LabelStm(StringRef label) : IAstStm(StmKind::Label), mLabel(label) {}
+        StringRef mLabel; // 标签名称
+    };
+    // goto语句
+    struct GotoStm : public IAstStm
+    {
+        GotoStm() : IAstStm(StmKind::Goto), mLabel() {}
+        StringRef mLabel; // 标签名称
+    };
+    // break语句
+    struct BreakStm : public IAstStm
+    {
+        BreakStm() : IAstStm(StmKind::Break) {}
+    };
+    // continue语句
+    struct ContinueStm : public IAstStm
+    {
+        ContinueStm() : IAstStm(StmKind::Continue) {}
+    };
+    // return语句
+    struct ReturnStm : public IAstStm
+    {
+        ReturnStm() : IAstStm(StmKind::Return) {}
+
+        AstExpRef mVal; // 返回值
+    };
 
 }
 

@@ -494,7 +494,8 @@ namespace air
     struct DotCallExp : public IAstExp
     {
         std::vector<AstExpRef> mItems; // 成员集
-        DotCallExp() : IAstExp(ExpKind::Dot) {}
+        bool mFunCall;                 // 存在函数调用
+        DotCallExp() : IAstExp(ExpKind::Dot), mFunCall(false) {}
     };
     // 数组访问表达式
     struct ArrayExp : public IAstExp

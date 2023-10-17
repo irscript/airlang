@@ -36,6 +36,9 @@ namespace air
         // 解析类型
         void Type(AstType &type);
 
+        // 解析变量定义
+        void Variable(VariableDecl &decl);
+
         // 解析函数
         void Function(FunctionDecl &fundecl);
         // 解析参数列表
@@ -72,7 +75,7 @@ namespace air
         // 解析块语句
         void BlockStatement(BlockStm &stm);
         // 解析变量定义语句
-        bool VarStatement(BlockStm &stm);
+        AstStmRef VarStatement();
         // if*系列语句
         AstStmRef IfStatement();
         AstStmRef ElsifStatement();

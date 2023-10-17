@@ -44,8 +44,8 @@ namespace air
         auto tok = mLexer.GetNext();
         if (tok.kind != TkKind::KeyWord || tok.code.key != KeyEnum::Package)
         {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少包声明!");
         }
 
@@ -55,8 +55,8 @@ namespace air
             tok = mLexer.GetNext();
             if (tok.kind != TkKind::Identifier)
             {
-                Error("line:%d\n", tok.pos.mLine);
-                Error("tok:%s\n", tok.text.c_str());
+                Error("    line:  %d\n", tok.pos.mLine);
+                Error("    tok:  %s\n", tok.text.c_str());
                 throw ErrorExpception("缺少包名称!");
             }
             szPkg += tok.text;
@@ -68,8 +68,8 @@ namespace air
             }
             if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::SemiColon)
                 break;
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号 ';' !");
         }
         mUnit.mPackage = mPool.RefString(szPkg);
@@ -106,8 +106,8 @@ namespace air
                 }
                 continue;
             }
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少导入名称！");
         }
     }
@@ -118,8 +118,8 @@ namespace air
         auto tok = mLexer.GetNext();
         if (tok.kind != TkKind::Identifier)
         {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少依赖别名！");
         }
 
@@ -128,16 +128,16 @@ namespace air
         tok = mLexer.GetNext();
         if (tok.kind != TkKind::Operaor || tok.code.op != OpEnum::Assign)
         {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号 '='！");
         }
 
         tok = mLexer.GetNext();
         if (tok.kind != TkKind::StringLiteral)
         {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少依赖文件路径！");
         }
         szFile = tok.text;
@@ -145,8 +145,8 @@ namespace air
         tok = mLexer.GetNext();
         if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::SemiColon)
         {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号 ';'！");
         }
 
@@ -175,6 +175,7 @@ namespace air
         Front3PScope(defaultScope, scope);
         flag.mScope = scope;
         auto startpos = mLexer.GetCurPos();
+        FrontFlag(flag);
         // 2.解析类型声明
         auto tok = mLexer.GetNext();
         if (tok.kind == TkKind::KeyWord)
@@ -205,8 +206,8 @@ namespace air
         tok = mLexer.GetNext();
         if (tok.kind != TkKind::Identifier)
         {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少名称！");
         }
         auto name = mPool.RefString(tok.text);
@@ -234,92 +235,9 @@ namespace air
         decl->mName = name;
         decl->mStartPos = startpos;
 
-        // 6、静态数组: id[exp,exp]
-        if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::OpenBracket)
-        {
-            while (true)
-            {
-                decl->mArrCol.push_back(Expression());
-                tok = mLexer.GetNext();
-                if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::Comma)
-                    continue;
-                if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::CloseBracket)
-                    break;
-                Error("line:%d\n", tok.pos.mLine);
-                Error("tok:%s\n", tok.text.c_str());
-                throw ErrorExpception("缺少符号 ']' ！");
-            }
-            tok = mLexer.GetNext();
-        }
+        mLexer.BackTok(tok);
+        Variable(*decl);
 
-        // 7、初始值表达式
-        if (tok.kind == TkKind::Operaor && tok.code.op == OpEnum::Assign)
-        {
-            decl->mInitExp = Expression();
-            tok = mLexer.GetNext();
-        }
-        decl->mEndPos = mLexer.GetCurPos();
-
-        // 8、同行逗号定义变量
-        if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::Comma)
-        {
-            // name[,]=exp
-            while (true)
-            {
-                VariableDecl *vardecl = nullptr;
-                auto decref = GenDecl(vardecl);
-                decl->mVarItems.push_back(decref);
-                vardecl->mFlag = flag;
-                vardecl->mType = type;
-                // 获取名称
-                tok = mLexer.GetNext();
-                if (tok.kind != TkKind::Identifier)
-                {
-                    Error("line:%d\n", tok.pos.mLine);
-                    Error("tok:%s\n", tok.text.c_str());
-                    throw ErrorExpception("缺少名称！");
-                }
-                vardecl->mName = mPool.RefString(tok.text);
-                vardecl->mStartPos = tok.pos;
-                // 静态数组
-                tok = mLexer.GetNext();
-                if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::OpenBracket)
-                {
-                    while (true)
-                    {
-                        vardecl->mArrCol.push_back(Expression());
-                        tok = mLexer.GetNext();
-                        if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::Comma)
-                            continue;
-                        if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::CloseBracket)
-                            break;
-                        Error("line:%d\n", tok.pos.mLine);
-                        Error("tok:%s\n", tok.text.c_str());
-                        throw ErrorExpception("缺少符号 ']' ！");
-                    }
-                    tok = mLexer.GetNext();
-                }
-                // 初始值表达式
-                if (tok.kind == TkKind::Operaor && tok.code.op == OpEnum::Assign)
-                {
-                    vardecl->mInitExp = Expression();
-                    tok = mLexer.GetNext();
-                }
-                vardecl->mEndPos = mLexer.GetCurPos();
-                // 继续解析
-                if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::Comma)
-                    continue;
-                break;
-            }
-        }
-
-        // 9、确认分号 ;
-        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::SemiColon)
-        {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
-            throw ErrorExpception("缺少符号 ';' ！");
-        }
         return decref;
     }
     // 3P: public | private | protected
@@ -422,8 +340,8 @@ namespace air
                         type.mTypeStr.push_back(mPool.RefString(tok.text));
                     else
                     {
-                        Error("line:%d\n", tok.pos.mLine);
-                        Error("tok:%s\n", tok.text.c_str());
+                        Error("    line:  %d\n", tok.pos.mLine);
+                        Error("    tok:  %s\n", tok.text.c_str());
                         throw ErrorExpception("缺少标识符！");
                     }
                     tok = mLexer.GetNext();
@@ -438,8 +356,8 @@ namespace air
             }
             else
             {
-                Error("line:%d\n", tok.pos.mLine);
-                Error("tok:%s\n", tok.text.c_str());
+                Error("    line:  %d\n", tok.pos.mLine);
+                Error("    tok:  %s\n", tok.text.c_str());
                 throw ErrorExpception("缺少标识符！");
             }
         }
@@ -465,8 +383,8 @@ namespace air
                         continue;
                     }
                     // 语法错误
-                    Error("line:%d\n", tok.pos.mLine);
-                    Error("tok:%s\n", tok.text.c_str());
+                    Error("    line:  %d\n", tok.pos.mLine);
+                    Error("    tok:  %s\n", tok.text.c_str());
                     throw ErrorExpception("缺少符号: ']' ！");
                 }
                 type.mArrDynCol = colcnt;
@@ -474,7 +392,7 @@ namespace air
                 // 验证维度
                 if (colcnt > 3)
                 {
-                    Error("line:%d\ncol:%d\n", tok.pos.mLine, colcnt);
+                    Error("    line:  %d\ncol:%d\n", tok.pos.mLine, colcnt);
                     throw ErrorExpception("数组维度>3 ！");
                 }
                 tok = mLexer.GetNext(); // 为查看是否是引用获取单词
@@ -500,8 +418,8 @@ namespace air
                                 break;
                         }
                         // 语法错误
-                        Error("line:%d\n", tok.pos.mLine);
-                        Error("tok:%s\n", tok.text.c_str());
+                        Error("    line:  %d\n", tok.pos.mLine);
+                        Error("    tok:  %s\n", tok.text.c_str());
                         throw ErrorExpception("缺少符号: ']' ！");
                     }
                     type.mArrBlk == 0;
@@ -517,8 +435,8 @@ namespace air
             else
             {
                 // 语法错误
-                Error("line:%d\n", tok.pos.mLine);
-                Error("tok:%s\n", tok.text.c_str());
+                Error("    line:  %d\n", tok.pos.mLine);
+                Error("    tok:  %s\n", tok.text.c_str());
                 throw ErrorExpception("缺少符号: ']' ！");
             }
         }
@@ -530,6 +448,97 @@ namespace air
         else
         {
             mLexer.BackTok(tok);
+        }
+    }
+
+    void Parser::Variable(VariableDecl &decl)
+    {
+        auto tok = mLexer.GetNext();
+        // 静态数组: id[exp,exp]
+        if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::OpenBracket)
+        {
+            while (true)
+            {
+                decl.mArrCol.push_back(Expression());
+                tok = mLexer.GetNext();
+                if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::Comma)
+                    continue;
+                if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::CloseBracket)
+                    break;
+                Error("    line:  %d\n", tok.pos.mLine);
+                Error("    tok:  %s\n", tok.text.c_str());
+                throw ErrorExpception("缺少符号 ']' ！");
+            }
+            tok = mLexer.GetNext();
+        }
+
+        // 初始值表达式
+        if (tok.kind == TkKind::Operaor && tok.code.op == OpEnum::Assign)
+        {
+            decl.mInitExp = Expression();
+            tok = mLexer.GetNext();
+        }
+        decl.mEndPos = mLexer.GetCurPos();
+
+        // 同行逗号定义变量
+        if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::Comma)
+        {
+            // name[,]=exp
+            while (true)
+            {
+                VariableDecl *vardecl = nullptr;
+                auto decref = GenDecl(vardecl);
+                decl.mVarItems.push_back(decref);
+                vardecl->mFlag = decl.mFlag;
+                vardecl->mType = decl.mType;
+                // 获取名称
+                tok = mLexer.GetNext();
+                if (tok.kind != TkKind::Identifier)
+                {
+                    Error("    line:  %d\n", tok.pos.mLine);
+                    Error("    tok:  %s\n", tok.text.c_str());
+                    throw ErrorExpception("缺少名称！");
+                }
+                vardecl->mName = mPool.RefString(tok.text);
+                vardecl->mStartPos = tok.pos;
+                // 静态数组
+                tok = mLexer.GetNext();
+                if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::OpenBracket)
+                {
+                    while (true)
+                    {
+                        vardecl->mArrCol.push_back(Expression());
+                        tok = mLexer.GetNext();
+                        if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::Comma)
+                            continue;
+                        if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::CloseBracket)
+                            break;
+                        Error("    line:  %d\n", tok.pos.mLine);
+                        Error("    tok:  %s\n", tok.text.c_str());
+                        throw ErrorExpception("缺少符号 ']' ！");
+                    }
+                    tok = mLexer.GetNext();
+                }
+                // 初始值表达式
+                if (tok.kind == TkKind::Operaor && tok.code.op == OpEnum::Assign)
+                {
+                    vardecl->mInitExp = Expression();
+                    tok = mLexer.GetNext();
+                }
+                vardecl->mEndPos = mLexer.GetCurPos();
+                // 继续解析
+                if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::Comma)
+                    continue;
+                break;
+            }
+        }
+
+        // 9、确认分号 ;
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::SemiColon)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号 ';' ！");
         }
     }
 
@@ -547,10 +556,11 @@ namespace air
         if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::OpenBrace)
         {
             BlockStatement(fundecl.mFuncBody);
+            return;
         }
         // 错误
-        Error("line:%d\n", tok.pos.mLine);
-        Error("tok:%s\n", tok.text.c_str());
+        Error("    line:  %d\n", tok.pos.mLine);
+        Error("    tok:  %s\n", tok.text.c_str());
         throw ErrorExpception("缺少符号 ';' ！");
     }
     // 参数声明类表：( type name, type name,...)
@@ -560,6 +570,7 @@ namespace air
         // 无参数
         if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::CloseParen)
             return;
+            mLexer.BackTok(tok);
         while (true)
         {
             auto &item = list.emplace_back();
@@ -579,8 +590,8 @@ namespace air
             if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::CloseParen)
                 break;
             // 错误
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号 ')' ！");
         }
     }
@@ -592,8 +603,8 @@ namespace air
         // 解析名称
         if (tok.kind != TkKind::Identifier)
         {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少枚举类型名称 !");
         }
         EnumDecl *decins = nullptr;
@@ -619,8 +630,8 @@ namespace air
             }
             else
             {
-                Error("line:%d\n", tok.pos.mLine);
-                Error("tok:%s\n", tok.text.c_str());
+                Error("    line:  %d\n", tok.pos.mLine);
+                Error("    tok:  %s\n", tok.text.c_str());
                 throw ErrorExpception("缺少合法的类型名称 !");
             }
             tok = mLexer.GetNext();
@@ -628,8 +639,8 @@ namespace air
         // 确保 {
         if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenBrace)
         {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号 ‘{’ !");
         }
         // 解析 枚举项声明
@@ -645,8 +656,8 @@ namespace air
             // 枚举项名称
             if (tok.kind != TkKind::Identifier)
             {
-                Error("line:%d\n", tok.pos.mLine);
-                Error("tok:%s\n", tok.text.c_str());
+                Error("    line:  %d\n", tok.pos.mLine);
+                Error("    tok:  %s\n", tok.text.c_str());
                 throw ErrorExpception("缺少枚举项名称 !");
             }
             auto &item = decins->mEnums.emplace_back();
@@ -669,8 +680,8 @@ namespace air
             }
             else
             {
-                Error("line:%d\n", tok.pos.mLine);
-                Error("tok:%s\n", tok.text.c_str());
+                Error("    line:  %d\n", tok.pos.mLine);
+                Error("    tok:  %s\n", tok.text.c_str());
                 throw ErrorExpception("缺少符号 '}' !");
             }
         }
@@ -748,8 +759,8 @@ namespace air
                     tok = mLexer.GetNext();
                     if (tok.kind != TkKind::Operaor || tok.code.op != OpEnum::LT)
                     {
-                        Error("line:%d\n", tok.pos.mLine);
-                        Error("tok:%s\n", tok.text.c_str());
+                        Error("    line:  %d\n", tok.pos.mLine);
+                        Error("    tok:  %s\n", tok.text.c_str());
                         throw ErrorExpception("缺少符号'<' ！");
                     }
 
@@ -757,8 +768,8 @@ namespace air
 
                     if (tok.kind != TkKind::Operaor || tok.code.op != OpEnum::GT)
                     {
-                        Error("line:%d\n", tok.pos.mLine);
-                        Error("tok:%s\n", tok.text.c_str());
+                        Error("    line:  %d\n", tok.pos.mLine);
+                        Error("    tok:  %s\n", tok.text.c_str());
                         throw ErrorExpception("缺少符号'>' ！");
                     }
                 }
@@ -767,8 +778,8 @@ namespace air
                     tok = mLexer.GetNext();
                     if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenParen)
                     {
-                        Error("line:%d\n", tok.pos.mLine);
-                        Error("tok:%s\n", tok.text.c_str());
+                        Error("    line:  %d\n", tok.pos.mLine);
+                        Error("    tok:  %s\n", tok.text.c_str());
                         throw ErrorExpception("缺少符号'(' ！");
                     }
 
@@ -777,8 +788,8 @@ namespace air
                     tok = mLexer.GetNext();
                     if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::CloseParen)
                     {
-                        Error("line:%d\n", tok.pos.mLine);
-                        Error("tok:%s\n", tok.text.c_str());
+                        Error("    line:  %d\n", tok.pos.mLine);
+                        Error("    tok:  %s\n", tok.text.c_str());
                         throw ErrorExpception("缺少符号')' ！");
                     }
                     exp->mEndPos = mLexer.GetCurPos();
@@ -839,8 +850,8 @@ namespace air
                 tok = mLexer.GetNext();
                 if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::CloseParen)
                 {
-                    Error("line:%d\n", tok.pos.mLine);
-                    Error("tok:%s\n", tok.text.c_str());
+                    Error("    line:  %d\n", tok.pos.mLine);
+                    Error("    tok:  %s\n", tok.text.c_str());
                     throw ErrorExpception("缺少符号')' ！");
                 }
                 exp->mEndPos = mLexer.GetCurPos();
@@ -911,8 +922,8 @@ namespace air
         }
     _Error_:
     {
-        Error("line:%d\n", tok.pos.mLine);
-        Error("tok:%s\n", tok.text.c_str());
+        Error("    line:  %d\n", tok.pos.mLine);
+        Error("    tok:  %s\n", tok.text.c_str());
         throw ErrorExpception("缺少表达式 ！");
     }
         return AstExpRef();
@@ -940,8 +951,8 @@ namespace air
             if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::CloseParen)
                 break;
             // 错误
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号 ')' ！");
         }
 
@@ -970,8 +981,8 @@ namespace air
             if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::CloseBracket)
                 break;
             // 错误
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号 ']' ！");
         }
         exp->mEndPos = mLexer.GetCurPos();
@@ -995,8 +1006,8 @@ namespace air
                         break;
                     }
                     // 错误
-                    Error("line:%d\n", tok.pos.mLine);
-                    Error("tok:%s\n", tok.text.c_str());
+                    Error("    line:  %d\n", tok.pos.mLine);
+                    Error("    tok:  %s\n", tok.text.c_str());
                     throw ErrorExpception("缺少符号 ']' ！");
                 }
                 exp->mEndPos = mLexer.GetCurPos();
@@ -1063,6 +1074,8 @@ namespace air
                 case ExpKind::Array:
                 case ExpKind::FunCall:
                 {
+                    if (basic->GetKind() == ExpKind::FunCall)
+                        dot->mFunCall = true;
                     dot->mItems.push_back(basic);
                 }
                 break;
@@ -1078,8 +1091,8 @@ namespace air
                 }
                 default:
                 {
-                    Error("line:%d\n", tok.pos.mLine);
-                    Error("tok:%s\n", tok.text.c_str());
+                    Error("    line:  %d\n", tok.pos.mLine);
+                    Error("    tok:  %s\n", tok.text.c_str());
                     throw ErrorExpception("缺少成员 ！");
                 }
                 break;
@@ -1174,8 +1187,8 @@ namespace air
         auto tok = mLexer.GetNext();
         if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::Colon)
         {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号: ':' ！");
         }
         ter->mSelect2 = Expression();
@@ -1201,37 +1214,49 @@ namespace air
                 {
                 case KeyEnum::If:
                 {
-                    stm.mStatement.push_back(IfStatement());
+                    auto res = IfStatement();
+                    res->mStartPos = tok.pos;
+                    stm.mStatement.push_back(res);
                     continue;
                 }
                 break;
                 case KeyEnum::Switch:
                 {
-                    stm.mStatement.push_back(SwitchStatement());
+                    auto res = SwitchStatement();
+                    res->mStartPos = tok.pos;
+                    stm.mStatement.push_back(res);
                     continue;
                 }
                 break;
                 case KeyEnum::For:
                 {
-                    stm.mStatement.push_back(ForStatement());
+                    auto res = ForStatement();
+                    res->mStartPos = tok.pos;
+                    stm.mStatement.push_back(res);
                     continue;
                 }
                 break;
                 case KeyEnum::While:
                 {
-                    stm.mStatement.push_back(WhileStatement());
+                    auto res = WhileStatement();
+                    res->mStartPos = tok.pos;
+                    stm.mStatement.push_back(res);
                     continue;
                 }
                 break;
                 case KeyEnum::Do:
                 {
-                    stm.mStatement.push_back(DoWhileStatement());
+                    auto res = DoWhileStatement();
+                    res->mStartPos = tok.pos;
+                    stm.mStatement.push_back(res);
                     continue;
                 }
                 break;
                 case KeyEnum::Try:
                 {
-                    stm.mStatement.push_back(TryStatement());
+                    auto res = TryStatement();
+                    res->mStartPos = tok.pos;
+                    stm.mStatement.push_back(res);
                     continue;
                 }
                 break;
@@ -1246,8 +1271,8 @@ namespace air
                     tok = mLexer.GetNext();
                     if (tok.kind != TkKind::Identifier)
                     {
-                        Error("line:%d\n", tok.pos.mLine);
-                        Error("tok:%s\n", tok.text.c_str());
+                        Error("    line:  %d\n", tok.pos.mLine);
+                        Error("    tok:  %s\n", tok.text.c_str());
                         throw ErrorExpception("缺少标签名 ！");
                     }
                     gotostm->mLabel = mPool.RefString(tok.text);
@@ -1255,8 +1280,8 @@ namespace air
                     tok = mLexer.GetNext();
                     if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::SemiColon)
                     {
-                        Error("line:%d\n", tok.pos.mLine);
-                        Error("tok:%s\n", tok.text.c_str());
+                        Error("    line:  %d\n", tok.pos.mLine);
+                        Error("    tok:  %s\n", tok.text.c_str());
                         throw ErrorExpception("缺少符号: ';' ！");
                     }
                     gotostm->mEndPos = mLexer.GetCurPos();
@@ -1274,8 +1299,8 @@ namespace air
                     tok = mLexer.GetNext();
                     if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::SemiColon)
                     {
-                        Error("line:%d\n", tok.pos.mLine);
-                        Error("tok:%s\n", tok.text.c_str());
+                        Error("    line:  %d\n", tok.pos.mLine);
+                        Error("    tok:  %s\n", tok.text.c_str());
                         throw ErrorExpception("缺少符号: ';' ！");
                     }
                     stmptr->mEndPos = mLexer.GetCurPos();
@@ -1292,8 +1317,8 @@ namespace air
                     tok = mLexer.GetNext();
                     if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::SemiColon)
                     {
-                        Error("line:%d\n", tok.pos.mLine);
-                        Error("tok:%s\n", tok.text.c_str());
+                        Error("    line:  %d\n", tok.pos.mLine);
+                        Error("    tok:  %s\n", tok.text.c_str());
                         throw ErrorExpception("缺少符号: ';' ！");
                     }
                     stmptr->mEndPos = mLexer.GetCurPos();
@@ -1312,8 +1337,8 @@ namespace air
                     tok = mLexer.GetNext();
                     if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::SemiColon)
                     {
-                        Error("line:%d\n", tok.pos.mLine);
-                        Error("tok:%s\n", tok.text.c_str());
+                        Error("    line:  %d\n", tok.pos.mLine);
+                        Error("    tok:  %s\n", tok.text.c_str());
                         throw ErrorExpception("缺少符号: ';' ！");
                     }
                     stmptr->mEndPos = mLexer.GetCurPos();
@@ -1346,33 +1371,161 @@ namespace air
 
         _Var_Exp_:
             // 变量定义语句、表达式语句
-            if (VarStatement(stm) == false)
-            {
-                auto exp = Expression();
-                ExpStm *stmptr = nullptr;
-                stm.mStatement.push_back(GenStm(stmptr, exp));
-            }
-            tok = mLexer.GetNext();
-            if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::SemiColon)
-            {
-                Error("line:%d\n", tok.pos.mLine);
-                Error("tok:%s\n", tok.text.c_str());
-                throw ErrorExpception("缺少符号: ';' ！");
-            }
+            stm.mStatement.push_back(VarStatement());
         }
         stm.mEndPos = mLexer.GetCurPos();
     }
-    bool Parser::VarStatement(BlockStm &stm)
+    AstStmRef Parser::VarStatement()
     {
-        return false;
+        // 解析前置标记
+        AstFlag flag;
+        // 解析类型
+        AstType type;
+        auto tok = mLexer.GetNext();
+        if (tok.kind == TkKind::KeyWord)
+        {
+            switch (tok.code.key)
+            {
+            case KeyEnum::Static:
+            {
+                flag.mStatic = 1;
+                goto _EnusureVarDef_;
+            }
+            break;
+            case KeyEnum::Const:
+            {
+                mLexer.BackTok(tok);
+                goto _EnusureVarDef_;
+            }
+            break;
+            default:
+            {
+                mLexer.BackTok(tok);
+                // 基本类型关键字
+                if (KeyEnum::Void < tok.code.key && tok.code.key < KeyEnum::Nullptr)
+                    goto _EnusureVarDef_;
+
+                // 可能是表达式语句
+                goto _MayBeExp_;
+            }
+            break;
+            }
+        }
+        // 先看看是否表达式
+        else if (tok.kind == TkKind::Identifier)
+        {
+            mLexer.BackTok(tok);
+            auto exp = Expression();
+            switch (exp->GetKind())
+            {
+            case ExpKind::Identity:
+            {
+                auto tok2 = mLexer.GetNext();
+                // 确保 ；
+                if (tok2.kind == TkKind::Seperator && tok2.code.sp == SpEnum::SemiColon)
+                {
+                    ExpStm *expstmptr = nullptr;
+                    auto stm = GenStm(expstmptr, exp);
+                    expstmptr->mEndPos = mLexer.GetCurPos();
+                    tok = mLexer.GetNext();
+                    return stm;
+                }
+                // 不是表达式，看看是不是变量定义
+                mLexer.BackTok(tok);
+                goto _EnusureVarDef_;
+            }
+            break;
+            case ExpKind::Dot:
+            {
+                DotCallExp &dot = *(DotCallExp *)(exp.get());
+                if (dot.mFunCall == true)
+                {
+                    ExpStm *expstmptr = nullptr;
+                    auto stm = GenStm(expstmptr, exp);
+                    expstmptr->mEndPos = mLexer.GetCurPos();
+                    tok = mLexer.GetNext();
+                    // 确保 ；
+                    if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::SemiColon)
+                    {
+                        // 错误
+                        Error("    line:  %d\n", tok.pos.mLine);
+                        Error("    tok:  %s\n", tok.text.c_str());
+                        throw ErrorExpception("缺少符号 ';' ！");
+                    }
+                    return stm;
+                }
+                // 可能是表达式
+                auto tok2 = mLexer.GetNext();
+                // 确保 ；
+                if (tok2.kind == TkKind::Seperator && tok2.code.sp == SpEnum::SemiColon)
+                {
+                    ExpStm *expstmptr = nullptr;
+                    auto stm = GenStm(expstmptr, exp);
+                    expstmptr->mEndPos = mLexer.GetCurPos();
+                    tok = mLexer.GetNext();
+                    return stm;
+                }
+                // 不是表达式，看看是不是变量定义
+                mLexer.BackTok(tok);
+                goto _EnusureVarDef_;
+            }
+            break;
+            }
+        }
+        // 可能是表达式语句
+        else
+        {
+            mLexer.BackTok(tok);
+        }
+        // 可能是表达式语句
+    _MayBeExp_:
+    {
+        auto exp = Expression();
+        ExpStm *stmptr = nullptr;
+        auto stm = GenStm(stmptr, exp);
+
+        tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::SemiColon)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: ';' ！");
+        }
+        return stm;
+    }
+
+        // 确定是变量定义
+    _EnusureVarDef_:
+        Type(type);
+        // 解析名称
+        tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Identifier)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少名称！");
+        }
+        VariableDecl *decl = nullptr;
+        auto decref = GenDecl(decl);
+        decl->mFlag = flag;
+        decl->mType = type;
+        decl->mName = mPool.RefString(tok.text);
+        decl->mStartPos = tok.pos;
+
+        VarStm *varstmptr = nullptr;
+        auto stm = GenStm(varstmptr);
+
+        Variable(*decl);
+
+        return stm;
     }
     AstStmRef Parser::IfStatement()
     {
         auto tok = mLexer.GetNext();
         if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenParen)
         {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号: '(' ！");
         }
 
@@ -1384,15 +1537,15 @@ namespace air
         tok = mLexer.GetNext();
         if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::CloseParen)
         {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号: ')' ！");
         }
         tok = mLexer.GetNext();
         if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenBrace)
         {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号: '{' ！");
         }
         BlockStatement(stmptr->mBlock);
@@ -1424,8 +1577,8 @@ namespace air
         auto tok = mLexer.GetNext();
         if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenParen)
         {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号: '(' ！");
         }
 
@@ -1437,15 +1590,15 @@ namespace air
         tok = mLexer.GetNext();
         if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::CloseParen)
         {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号: ')' ！");
         }
         tok = mLexer.GetNext();
         if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenBrace)
         {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号: '{' ！");
         }
         BlockStatement(stmptr->mBlock);
@@ -1460,8 +1613,8 @@ namespace air
         auto tok = mLexer.GetNext();
         if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenBrace)
         {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号: '{' ！");
         }
         BlockStatement(stmptr->mBlock);
@@ -1473,8 +1626,8 @@ namespace air
         auto tok = mLexer.GetNext();
         if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenParen)
         {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号: '(' ！");
         }
 
@@ -1486,15 +1639,15 @@ namespace air
         tok = mLexer.GetNext();
         if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::CloseParen)
         {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号: ')' ！");
         }
         tok = mLexer.GetNext();
         if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenBrace)
         {
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号: '{' ！");
         }
         while (true)
@@ -1516,8 +1669,8 @@ namespace air
                     break;
                 }
             }
-            Error("line:%d\n", tok.pos.mLine);
-            Error("tok:%s\n", tok.text.c_str());
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号: '}' ！");
         }
 
@@ -1525,41 +1678,226 @@ namespace air
     }
     AstStmRef Parser::CaseStatement()
     {
-        return AstStmRef();
+        CaseStm *stmptr = nullptr;
+        auto stm = GenStm(stmptr);
+        // 解析表达式
+        stmptr->mCondExp = Expression();
+        auto tok = mLexer.GetNext();
+        // 确保 :
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::Colon)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: ':' ！");
+        }
+        // 确保 ｛
+        tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenBrace)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: '{' ！");
+        }
+        // 解析语句体
+        BlockStatement(stmptr->mBlock);
+        return stm;
     }
     AstStmRef Parser::DefaultStatement()
     {
         DefaultStm *stmptr = nullptr;
         auto stm = GenStm(stmptr);
+        auto tok = mLexer.GetNext();
+        // 确保 :
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::Colon)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: ':' ！");
+        }
+        // 确保 ｛
+        tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenBrace)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: '{' ！");
+        }
         BlockStatement(stmptr->mBlock);
         return stm;
     }
 
     AstStmRef Parser::ForStatement()
     {
-        return AstStmRef();
+        ForStm *stmptr = nullptr;
+        auto stm = GenStm(stmptr);
+        // 解析条件表达式
+        auto tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenParen)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: '(' ！");
+        }
+        // TODO：
+        stmptr->mCondExp = Expression();
+
+        tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::CloseParen)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: ')' ！");
+        }
+        tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenBrace)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: '{' ！");
+        }
+        // 解析语句体
+        BlockStatement(stmptr->mBlock);
+        return stm;
     }
     AstStmRef Parser::WhileStatement()
     {
-        return AstStmRef();
+        WhileStm *stmptr = nullptr;
+        auto stm = GenStm(stmptr);
+        // 解析条件表达式
+        auto tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenParen)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: '(' ！");
+        }
+
+        stmptr->mCondExp = Expression();
+
+        tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::CloseParen)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: ')' ！");
+        }
+        tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenBrace)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: '{' ！");
+        }
+        // 解析语句体
+        BlockStatement(stmptr->mBlock);
+        return stm;
     }
     AstStmRef Parser::DoWhileStatement()
     {
-        return AstStmRef();
+        WhileStm *stmptr = nullptr;
+        auto stm = GenStm(stmptr);
+        auto tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenBrace)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: '{' ！");
+        }
+        // 解析语句体
+        BlockStatement(stmptr->mBlock);
+        tok = mLexer.GetNext();
+        if (tok.kind != TkKind::KeyWord || tok.code.key != KeyEnum::While)
+        {
+        }
+        // 解析条件表达式
+        tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenParen)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: '(' ！");
+        }
+
+        stmptr->mCondExp = Expression();
+
+        tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::CloseParen)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: ')' ！");
+        }
+        tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::SemiColon)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: ';' ！");
+        }
+        return stm;
     }
 
     AstStmRef Parser::TryStatement()
     {
-        return AstStmRef();
+        TryStm *stmptr = nullptr;
+        auto stm = GenStm(stmptr);
+        // 确保 ｛
+        auto tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenBrace)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: '{' ！");
+        }
+        // 解析语句体
+        BlockStatement(stmptr->mBlock);
+        return stm;
     }
     AstStmRef Parser::CatchStatement()
     {
-        return AstStmRef();
+        CatchStm *stmptr = nullptr;
+        auto stm = GenStm(stmptr);
+        auto tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenParen)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: '(' ！");
+        }
+        // TODO：解析 变量
+        // stmptr->
+        tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::CloseParen)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: ')' ！");
+        }
+        // 确保 ｛
+        tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenBrace)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: '{' ！");
+        }
+        // 解析语句体
+        BlockStatement(stmptr->mBlock);
+        return stm;
     }
     AstStmRef Parser::FinallyStatement()
     {
         FinallyStm *stmptr = nullptr;
         auto stm = GenStm(stmptr);
+        // 确保 ｛
+        auto tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::OpenBrace)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少符号: '{' ！");
+        }
+        // 解析语句体
         BlockStatement(stmptr->mBlock);
         return stm;
     }

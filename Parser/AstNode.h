@@ -540,6 +540,8 @@ namespace air
         ExpStm(AstExpRef exp) : IAstStm(StmKind::Exp), mExp(exp) {}
 
         AstExpRef mExp; // 表达式
+
+        std::vector<AstExpRef> mExpItems; // 逗号表达式
     };
     // if语句
     struct IfStm : public IAstStm
@@ -593,10 +595,10 @@ namespace air
     struct ForStm : public IAstStm
     {
         ForStm() : IAstStm(StmKind::For), mBlock(BlockKind::For) {}
-        std::vector<AstExpRef> mInitExp; // 初始条件表达式
-        AstExpRef mCondExp;              // 结束条件表达式
-        std::vector<AstExpRef> mValExp;  // 值更新表达式
-        BlockStm mBlock;                 // 块语句
+        AstStmRef mInitExp;             // 初始条件表达式
+        AstExpRef mCondExp;             // 结束条件表达式
+        std::vector<AstExpRef> mValExp; // 值更新表达式
+        BlockStm mBlock;                // 块语句
     };
     // foreach语句
     struct ForeachStm : public IAstStm

@@ -16,7 +16,7 @@ namespace air
     {
         for (auto item : imp.mItems)
         {
-            Info("package %s = %s\n", item.first->c_str(), item.second->c_str());
+            Info("import %s = %s;\n", item.first->c_str(), item.second->c_str());
         }
         Print("\n");
     }
@@ -38,5 +38,7 @@ namespace air
     }
     void AstDumper::VarDecl(AstDeclRef &var, const std::string &szTab)
     {
+        VariableDecl &dec = *(VariableDecl *)(&*var);
+        //查看标记
     }
 }

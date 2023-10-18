@@ -12,9 +12,14 @@ namespace air
     private:
         void Dump(FileUnit &unit);
         void Import(ImportItems &imp);
+        // 打印声明
         void Decl(std::list<AstDeclRef> &list);
 
-        void VarDecl(AstDeclRef &var, const std::string &szTab);
+        void VarDecl(AstDeclRef &decl, const std::string &szTab);
+        void EnumDexl(AstDeclRef &decl, const std::string &szTab);
+
+        // 打印表达式
+        void Expression(AstExpRef &exp, const std::string &szTab);
     };
 }
 

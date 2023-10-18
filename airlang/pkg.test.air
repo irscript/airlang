@@ -20,5 +20,7 @@ static void fun(sint[,] a){
 
     lang.score core=i;
 
-    auto i=core+i*3;
+    auto i= core+i*3;
+    i,j;
+    test.s;
 }

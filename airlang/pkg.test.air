@@ -16,6 +16,7 @@ enum Test:sint{
 static int32 var[4],bar[3,3];
 
 static void fun(sint[,] a){
+
     sint i=0;
 
     lang.score core=i;
@@ -23,4 +24,24 @@ static void fun(sint[,] a){
     auto i= core+i*3;
     i,j;
     test.s;
+
+    if(i){}
+    elsif(j){}
+    elsif(core){}
+    else{}
+
+    switch(core){
+        case 1:{}
+        case i:{}
+        default:{}
+    }
+
+    for(i=0,j=0;i<20;++i,++j){}
+    while(true){}
+
+    do{}while(false);
+
+    try{}
+    catch(Exp e){}
+    finally{}
 }

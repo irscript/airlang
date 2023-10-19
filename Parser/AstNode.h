@@ -626,6 +626,9 @@ namespace air
         TryStm() : IAstStm(StmKind::Try), mBlock(BlockKind::Try) {}
 
         BlockStm mBlock; // 块语句
+
+        std::vector<AstStmRef> mCatchs;
+        AstStmRef mFinally;
     };
     // trow语句
     struct TrowStm : public IAstStm
@@ -639,6 +642,7 @@ namespace air
     {
         CatchStm() : IAstStm(StmKind::Catch), mBlock(BlockKind::Catch) {}
 
+        VariableDecl mVar;
         BlockStm mBlock; // 块语句
     };
     // finally语句

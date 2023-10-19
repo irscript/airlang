@@ -1518,7 +1518,7 @@ namespace air
                     ExpStm *expstmptr = nullptr;
                     auto stm = GenStm(expstmptr, exp);
                     expstmptr->mEndPos = mLexer.GetCurPos();
-                    
+
                     return stm;
                 }
                 // 不是表达式，看看是不是变量定义
@@ -1526,6 +1526,12 @@ namespace air
                 goto _EnusureVarDef_;
             }
             break;
+            // 就是表达式
+            default:
+            {
+                mLexer.BackTok(tok);
+                goto _MayBeExp_;
+            }
             }
         }
         // 可能是表达式语句
@@ -1635,15 +1641,17 @@ namespace air
                     stmptr->mElsifs.push_back(ElsifStatement());
                     continue;
                 case KeyEnum::Else:
-                    stmptr->mElsifs.push_back(ElseStatement());
+                    stmptr->mElse = ElseStatement();
+                    goto _End_;
                     break;
                 default:
                     mLexer.BackTok(tok);
+                    goto _End_;
                     break;
                 }
             }
         }
-
+    _End_:
         return stm;
     }
     AstStmRef Parser::ElsifStatement()
@@ -1744,15 +1752,21 @@ namespace air
                     stmptr->mCases.push_back(CaseStatement());
                     continue;
                 case KeyEnum::Default:
+                {
                     stmptr->mDefault = DefaultStatement();
-                    break;
+                    tok = mLexer.GetNext();
+                    // 结束符 }
+                    if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::CloseBrace)
+                        return stm;
+                }
+                break;
                 }
             }
             Error("    line:  %d\n", tok.pos.mLine);
             Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号: '}' ！");
         }
-
+    _End_:
         return stm;
     }
     AstStmRef Parser::CaseStatement()
@@ -1954,6 +1968,30 @@ namespace air
         }
         // 解析语句体
         BlockStatement(stmptr->mBlock);
+
+        // catch 和 finally 语句
+        while (true)
+        {
+            tok = mLexer.GetNext();
+            if (tok.kind == TkKind::KeyWord)
+            {
+                switch (tok.code.key)
+                {
+                case KeyEnum::Catch:
+                    stmptr->mCatchs.push_back(CatchStatement());
+                    continue;
+                case KeyEnum::Finally:
+                    stmptr->mFinally = FinallyStatement();
+                    goto _End_;
+                    break;
+                default:
+                    mLexer.BackTok(tok);
+                    goto _End_;
+                    break;
+                }
+            }
+        }
+    _End_:
         return stm;
     }
     AstStmRef Parser::CatchStatement()
@@ -1967,8 +2005,17 @@ namespace air
             Error("    tok:  %s\n", tok.text.c_str());
             throw ErrorExpception("缺少符号: '(' ！");
         }
-        // TODO：解析 变量
-        // stmptr->
+        // 解析 类型
+        Type(stmptr->mVar.mType);
+        // 解析 名称
+        tok = mLexer.GetNext();
+        if (tok.kind != TkKind::Identifier)
+        {
+            Error("    line:  %d\n", tok.pos.mLine);
+            Error("    tok:  %s\n", tok.text.c_str());
+            throw ErrorExpception("缺少名称 ！");
+        }
+        stmptr->mVar.mName = mPool.RefString(tok.text);
         tok = mLexer.GetNext();
         if (tok.kind != TkKind::Seperator || tok.code.sp != SpEnum::CloseParen)
         {

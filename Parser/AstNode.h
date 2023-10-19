@@ -131,7 +131,7 @@ namespace air
             };
         };
 
-        std::vector<StringRef> mTypeStr; // 类型字符串：用于后期查找类型 file.class
+        std::vector<StringRef> mName; // 类型字符串：用于后期查找类型 file.class
     };
 
     // 声明类别
@@ -484,11 +484,11 @@ namespace air
     // 本实例指针表达式
     struct ThisSuperExp : public IAstExp
     {
-        uint32_t mVal; // 0:this -1：super
-        ThisSuperExp(bool vthis) : IAstExp(ExpKind::This) { mVal = vthis == true ? 0 : -1; }
 
-        inline bool IsThis() { return mVal == 0; }
-        inline bool IsSuper() { return mVal == -1; }
+        ThisSuperExp(ExpKind kind) : IAstExp(kind) {}
+
+        inline bool IsThis() { return GetKind() == ExpKind::This; }
+        inline bool IsSuper() { return GetKind() == ExpKind::Super; }
     };
     // 成员访问表达式
     struct DotCallExp : public IAstExp

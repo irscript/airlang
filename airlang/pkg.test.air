@@ -13,8 +13,8 @@ enum Test:sint{
     b=(10+2)*2.5,
 }
 
-static int32 var[4],bar[3,3];
-
+static int32[,] var[4],bar[3,3];
+static int32[][] var[4],bar[3,3];
 static void fun(sint[,] a){
 
     sint i=0;

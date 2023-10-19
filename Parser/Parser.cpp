@@ -329,7 +329,7 @@ namespace air
                 (KeyEnum::Void <= tok.code.key &&
                  tok.code.key <= KeyEnum::Char))
             {
-                type.mTypeStr.push_back(mPool.RefString(tok.text));
+                type.mName.push_back(mPool.RefString(tok.text));
             }
             // 自定义类型 file.class.class
             else if (tok.kind == TkKind::Identifier)
@@ -337,7 +337,7 @@ namespace air
                 while (true)
                 {
                     if (tok.kind == TkKind::Identifier)
-                        type.mTypeStr.push_back(mPool.RefString(tok.text));
+                        type.mName.push_back(mPool.RefString(tok.text));
                     else
                     {
                         Error("    line:  %d\n", tok.pos.mLine);
@@ -802,7 +802,7 @@ namespace air
             case KeyEnum::Super:
             {
                 ThisSuperExp *exp = nullptr;
-                auto expres = GenExp(exp, tok.code.key == KeyEnum::This);
+                auto expres = GenExp(exp, tok.code.key == KeyEnum::This ? ExpKind::This : ExpKind::Super);
                 exp->mStartPos = tok.pos;
                 exp->mEndPos = mLexer.GetCurPos();
                 return expres;

@@ -326,7 +326,47 @@ namespace air
         Info("%s Unary: ", szTab.c_str());
         szTmp = szTab + mTab;
         auto &expref = *(UnaryExp *)(exp.get());
-        //Print(" %s\n", expref.mID->c_str());
+        // 前置一元表达式 +、-、++、--
+        if (expref.mPrev)
+        {
+            Print("%s op:", szTmp.c_str());
+            switch (expref.mOp)
+            {
+            case OpEnum::Plus:
+                Info("+\n");
+                break;
+            case OpEnum::Minus:
+                Info("-\n");
+                break;
+            case OpEnum::Plus2:
+                Info("++\n");
+                break;
+            case OpEnum::Minus2:
+                Info("--\n");
+                break;
+            default:
+                Error("未知一元表达式！");
+                break;
+            }
+        }
+        Expression(expref.mExp, szTmp2);
+        // 后置表达式
+        if (expref.mPrev == false)
+        {
+            Print("%s op:", szTmp.c_str());
+            switch (expref.mOp)
+            {
+            case OpEnum::Plus2:
+                Info("++\n");
+                break;
+            case OpEnum::Minus2:
+                Info("--\n");
+                break;
+            default:
+                Error("未知一元表达式！");
+                break;
+            }
+        }
     }
     void AstDumper::TernaryExpressio(AstExpRef &exp, const std::string &szTab)
     {
@@ -334,6 +374,14 @@ namespace air
         Info("%s Ternary:\n", szTab.c_str());
         szTmp = szTab + mTab;
         auto &expref = *(TernaryExp *)(exp.get());
+        Print("%s cond:\n", szTmp.c_str());
+        Expression(expref.mCond, szTmp2);
+        Print("%s ?\n", szTmp.c_str());
+        Print("%s select:\n", szTmp.c_str());
+        Expression(expref.mSelect, szTmp2);
+        Print("%s :\n", szTmp.c_str());
+        Print("%s select2:\n", szTmp.c_str());
+        Expression(expref.mSelect2, szTmp2);
     }
     void AstDumper::DotExpressio(AstExpRef &exp, const std::string &szTab)
     {
@@ -341,38 +389,37 @@ namespace air
         Info("%s Dot:\n", szTab.c_str());
         szTmp = szTab + mTab;
         auto &expref = *(DotCallExp *)(exp.get());
+        int i = 0;
+        for (auto item : expref.mItems)
+        {
+            Expression(item, szTmp);
+            if (i != expref.mItems.size())
+                Print("%s .\n", szTmp.c_str());
+        }
     }
 
     void AstDumper::IdentExpressio(AstExpRef &exp, const std::string &szTab)
     {
-        std::string szTmp, szTmp2;
-        Info("%s ID:\n", szTab.c_str());
-        szTmp = szTab + mTab;
         auto &expref = *(IdentExp *)(exp.get());
+        Info("%s ID: %s\n", szTab.c_str(), expref.mID->c_str());
     }
 
     void AstDumper::IntExpressio(AstExpRef &exp, const std::string &szTab)
     {
-        std::string szTmp, szTmp2;
-        Info("%s Int:\n", szTab.c_str());
-        szTmp = szTab + mTab;
         auto &expref = *(IntExp *)(exp.get());
+        Info("%s Int: %lld\n", szTab.c_str(), expref.mValue);
     }
 
     void AstDumper::UintExpressio(AstExpRef &exp, const std::string &szTab)
     {
-        std::string szTmp, szTmp2;
-        Info("%s Uint:\n", szTab.c_str());
-        szTmp = szTab + mTab;
         auto &expref = *(UintExp *)(exp.get());
+        Info("%s Uint: %llu\n", szTab.c_str(), expref.mValue);
     }
 
     void AstDumper::FloatExpressio(AstExpRef &exp, const std::string &szTab)
     {
-        std::string szTmp, szTmp2;
-        Info("%s Float:\n", szTab.c_str());
-        szTmp = szTab + mTab;
         auto &expref = *(FloatExp *)(exp.get());
+        Info("%s Float: %lf\n", szTab.c_str(), expref.mValue);
     }
 
     void AstDumper::CharExpressio(AstExpRef &exp, const std::string &szTab)
@@ -442,10 +489,11 @@ namespace air
     void AstDumper::ParenExpressio(AstExpRef &exp, const std::string &szTab)
     {
         std::string szTmp, szTmp2;
-        Info("%s Paren:\n", szTab.c_str());
+        Info("%s Paren:(\n", szTab.c_str());
         szTmp = szTab + mTab;
         auto &expref = *(ParenExp *)(exp.get());
         Expression(expref.mExp, szTmp);
+        Info("%s )\n", szTab.c_str());
     }
 
     void AstDumper::ArrayExpressio(AstExpRef &exp, const std::string &szTab)
@@ -469,6 +517,66 @@ namespace air
     }
 
     void AstDumper::Statament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::VarStatament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::ExpStatament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::IfStatament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::ElsiifStatament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::ElseStatament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::SwitchStatament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::CaseStatament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::DefaultStatament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::ForStatament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::ForeachStatament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::WhileStatament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::DoWhileStatament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::TryStatament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::CatchStatament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::FinallyStatament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::LableStatament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::GotoStatament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::BreakStatament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::ContinueStatament(AstStmRef &stm, const std::string &szTab)
+    {
+    }
+    void AstDumper::ReturnStatament(AstStmRef &stm, const std::string &szTab)
     {
     }
 }

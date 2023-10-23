@@ -27,6 +27,37 @@ namespace air
         inline void SetError() { mIsErr = true; }
     };
 
+    // 符号类别
+    enum class SymbolKind : uint32_t
+    {
+        Unknown,
+
+        File,    // 文件别名
+        Var,     // 变量
+        Enum,    // 枚举类型
+        Struct,  // 结构体
+        Entrust, // 委托
+        Class,   // 结构体
+    };
+    // 符号
+    struct AstSymbol
+    {
+        StringRef mName;  // 符号名称
+        SymbolKind mKind; // 符号类别
+        union
+        {
+            uintptr_t mDef;     // 定义指针
+            IAstNode *mNode;    // 语句节点项
+            ImportItems *mFile; // 文件依赖项
+        };
+
+        AstSymbol(StringRef name, SymbolKind kind, uintptr_t def)
+            : mName(name), mKind(kind), mDef(def) {}
+    };
+
+    // 符号表
+    using AstSymbolTable = std::map<StringRef, AstSymbol>;
+
     // 表达式类别
     enum class ExpKind : uint32_t
     {
@@ -233,6 +264,7 @@ namespace air
     enum class BlockKind : uint32_t
     {
         Unknown,  // 未知
+    
         Function, // 函数块
         Normal,   // 普通块
 
@@ -262,6 +294,8 @@ namespace air
         std::list<AstStmRef> mStatement; // 块内部语句
 
         BlockKind mBlockKind; // 块类型
+
+        AstSymbolTable mSymTable; // 符号表
     };
     //----------------------声明-------------
     // 变量声明

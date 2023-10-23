@@ -5,6 +5,7 @@
 #include <Parser/AstNode.h>
 namespace air
 {
+
     // 文件单元
     struct FileUnit
     {
@@ -13,6 +14,8 @@ namespace air
         ImportItems mImports; // 导入项
 
         std::list<AstDeclRef> mAstTree; // 语法抽象树
+
+        AstSymbolTable mSymTable; // 符号表
     };
 
     // 项目文件集

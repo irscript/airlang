@@ -49,7 +49,27 @@ namespace air
         void BlockExpressio(AstExpRef &exp, const std::string &szTab);
         // 打印语句
         void Statament(AstStmRef &stm, const std::string &szTab);
-    };
+        void VarStatament(AstStmRef &stm, const std::string &szTab);
+        void ExpStatament(AstStmRef &stm, const std::string &szTab);
+        void IfStatament(AstStmRef &stm, const std::string &szTab);
+        void ElsiifStatament(AstStmRef &stm, const std::string &szTab);
+        void ElseStatament(AstStmRef &stm, const std::string &szTab);
+        void SwitchStatament(AstStmRef &stm, const std::string &szTab);
+        void CaseStatament(AstStmRef &stm, const std::string &szTab);
+        void DefaultStatament(AstStmRef &stm, const std::string &szTab);
+        void ForStatament(AstStmRef &stm, const std::string &szTab);
+        void ForeachStatament(AstStmRef &stm, const std::string &szTab);
+        void WhileStatament(AstStmRef &stm, const std::string &szTab);
+        void DoWhileStatament(AstStmRef &stm, const std::string &szTab);
+        void TryStatament(AstStmRef &stm, const std::string &szTab);
+        void CatchStatament(AstStmRef &stm, const std::string &szTab);
+        void FinallyStatament(AstStmRef &stm, const std::string &szTab);
+        void LableStatament(AstStmRef &stm, const std::string &szTab);
+        void GotoStatament(AstStmRef &stm, const std::string &szTab);
+        void BreakStatament(AstStmRef &stm, const std::string &szTab);
+        void ContinueStatament(AstStmRef &stm, const std::string &szTab);
+        void ReturnStatament(AstStmRef &stm, const std::string &szTab);
+        };
 }
 
 #endif //!__ASTDUMP__H__

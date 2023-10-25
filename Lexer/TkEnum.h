@@ -117,6 +117,7 @@ namespace air
         Flt64,   // 64位浮点
         Uintptr, // 地址
         String,  // 字符串
+        CString, // 常量字符串
         Char,    // utf8字符
 
         //  基本值

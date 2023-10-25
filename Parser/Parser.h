@@ -46,18 +46,36 @@ namespace air
 
         // 解析枚举
         AstDeclRef Enum(ScopeEnum scope);
+
+        // 解析成员
+        AstMemberRef MemberItem(ScopeEnum &defaultScope);
+        AstMemberRef MemberVarItem(ScopeEnum &defaultScope);
+        AstMemberRef MemberUnionItem(ScopeEnum &defaultScope);
+        AstMemberRef MemberStructItem(ScopeEnum &defaultScope);
         // 解析结构体
         AstDeclRef Struct(ScopeEnum scope);
         // 解析委托
         AstDeclRef Entrust(ScopeEnum scope);
         // 解析接口
         AstDeclRef Interface(ScopeEnum scope);
+        void InterfaceItem(FunctionDecl& func);
         // 解析类
         AstDeclRef Class(ScopeEnum scope);
 
         //------------------表达式-------------------
         // 解析表达式
-        inline AstExpRef Expression() { return BinaryExpression(-20); }
+        inline AstExpRef Expression()
+        {
+            auto tok = mLexer.GetNext();
+            // 查看是否是块表达式
+            if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::OpenBrace)
+                return BlockExpression();
+            mLexer.BackTok(tok);
+            // 其他表达式
+            return BinaryExpression(-20);
+        }
+        // 块表达式
+        AstExpRef BlockExpression();
         // 基础表达式
         AstExpRef BasicExpression();
         // 函数调用表达式

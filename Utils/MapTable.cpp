@@ -29,6 +29,7 @@ namespace air
         KeyMap.insert({"flt32", KeyEnum::Flt32});
         KeyMap.insert({"flt64", KeyEnum::Flt64});
 
+        KeyMap.insert({"cstring", KeyEnum::CString});
         KeyMap.insert({"string", KeyEnum::String});
         KeyMap.insert({"char", KeyEnum::Char});
 

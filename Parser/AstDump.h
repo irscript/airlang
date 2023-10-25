@@ -49,6 +49,7 @@ namespace air
         void BlockExpressio(AstExpRef &exp, const std::string &szTab);
         // 打印语句
         void Statament(AstStmRef &stm, const std::string &szTab);
+        void BlockStatament(AstStmRef &stm, const std::string &szTab);
         void VarStatament(AstStmRef &stm, const std::string &szTab);
         void ExpStatament(AstStmRef &stm, const std::string &szTab);
         void IfStatament(AstStmRef &stm, const std::string &szTab);

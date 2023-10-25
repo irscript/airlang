@@ -27,6 +27,15 @@ namespace air
         inline void SetError() { mIsErr = true; }
     };
 
+    // 作用域
+    enum class ScopeEnum : uint32_t
+    {
+        Unknown,
+        Public,
+        Protected,
+        Private,
+    };
+
     // 符号类别
     enum class SymbolKind : uint32_t
     {
@@ -34,16 +43,29 @@ namespace air
 
         File,    // 文件别名
         Var,     // 变量
+        Func,    // 函数
         Enum,    // 枚举类型
         Struct,  // 结构体
         Entrust, // 委托
         Class,   // 结构体
     };
+
     // 符号
     struct AstSymbol
     {
         StringRef mName;  // 符号名称
         SymbolKind mKind; // 符号类别
+
+        union
+        {
+            uint32_t mAttributes; // 属性
+            struct
+            {
+                ScopeEnum mScope : 2;   // 作用域
+                uint32_t mIsStatic : 1; // 是否为静态的
+            };
+        };
+
         union
         {
             uintptr_t mDef;     // 定义指针
@@ -52,7 +74,7 @@ namespace air
         };
 
         AstSymbol(StringRef name, SymbolKind kind, uintptr_t def)
-            : mName(name), mKind(kind), mDef(def) {}
+            : mName(name), mKind(kind), mDef(def), mAttributes(0) {}
     };
 
     // 符号表
@@ -82,12 +104,14 @@ namespace air
         Cast,    // 类型转换表达式
         This,    // this 表达式
         Super,   // super 表达式
-        Dot,     // 成员访问表达式
-        Paren,   // 括号表达式
-        Array,   // 数组索引表达式
-        Rang,    // 范围表达式
-        Block,   // 块表达式
-        Lambda,  // 匿名表达式
+
+        Dot,   // 成员访问表达式
+        Paren, // 括号表达式
+        Array, // 数组索引表达式
+        Rang,  // 范围表达式
+        Block, // 块表达式
+
+        Lambda, // 匿名表达式
 
     };
 
@@ -115,14 +139,6 @@ namespace air
         return AstExpRef(instance);
     }
 
-    // 作用域
-    enum class ScopeEnum : uint32_t
-    {
-        Unknown,
-        Public,
-        Protected,
-        Private,
-    };
     // 声明标志
     union AstFlag
     {
@@ -139,6 +155,7 @@ namespace air
             // 函数标记
             uint32_t mInline : 1;   // 内联标识
             uint32_t mVirtual : 1;  // 虚函数
+            uint32_t mPureVir : 1;  // 纯虚函数
             uint32_t mOverride : 1; // 函数重写
             uint32_t mFinal : 1;    // 子类不再重写虚函数函数
         };
@@ -184,9 +201,9 @@ namespace air
     struct IAstDecl : public IAstNode
     {
         ScopeEnum mScope; // 3P作用域
-
+        bool mIsDecl;     // 只是声明
         IAstDecl(DeclKind kind = DeclKind::Unknown)
-            : IAstNode(), mDeclKind(kind), mScope(ScopeEnum::Unknown) {}
+            : IAstNode(), mDeclKind(kind), mScope(ScopeEnum::Unknown), mIsDecl(false) {}
 
         inline DeclKind GetKind() { return mDeclKind; }
 
@@ -263,8 +280,8 @@ namespace air
     // 块语句类型
     enum class BlockKind : uint32_t
     {
-        Unknown,  // 未知
-    
+        Unknown, // 未知
+
         Function, // 函数块
         Normal,   // 普通块
 
@@ -306,13 +323,15 @@ namespace air
 
         StringRef mName; // 变量名称
 
+        uint32_t mBitFiled; // 位域长度
+
         AstExpRef mInitExp; // 初始值表达式
 
         std::vector<AstExpRef> mArrCol; // 静态数组维度值表达式
 
         std::vector<AstDeclRef> mVarItems; // 同行逗号定义的变量
 
-        VariableDecl() : IAstDecl(DeclKind::Var)
+        VariableDecl() : IAstDecl(DeclKind::Var), mBitFiled(0)
         {
         }
     };
@@ -353,54 +372,107 @@ namespace air
         {
         }
     };
+
+    // 成员变量声明项
+    enum class MemberItemKind
+    {
+        Unknown,
+        Var,    // 变量成员
+        Union,  // 联合成员 union{};
+        Struct, // 结构成员 struct{};
+        Func,   // 函数成员
+    };
+
+    struct IMemberItem
+    {
+        MemberItemKind mKind; // 成员类别
+        IMemberItem(MemberItemKind kind) : mKind(kind) {}
+    };
+    // 成员智能指针
+    using AstMemberRef = std::shared_ptr<IMemberItem>;
+    // 生成成员智能指针
+    template <typename Member, typename... Arg>
+    AstMemberRef GenMember(Member *&instance, Arg... arg)
+    {
+        instance = new Member(arg...);
+        return AstMemberRef(instance);
+    }
+
+    // 变量成员
+    struct MemberVar : public IMemberItem
+    {
+        VariableDecl mDecl; // 成员变量声明
+        MemberVar() : IMemberItem(MemberItemKind::Var) {}
+    };
+    // Union成员
+    struct MemberUnion : public IMemberItem
+    {
+        std::vector<AstMemberRef> mItems; // 内部成员项
+        MemberUnion() : IMemberItem(MemberItemKind::Union) {}
+    };
+    // Struct成员
+    struct MemberStruct : public IMemberItem
+    {
+        std::vector<AstMemberRef> mItems; // 内部成员项
+        MemberStruct() : IMemberItem(MemberItemKind::Struct) {}
+    };
+    // 变量函数
+    struct MemberFunc : public IMemberItem
+    {
+        FunctionDecl mDecl; // 成员变量声明
+        MemberFunc() : IMemberItem(MemberItemKind::Func) {}
+    };
+
     // 结构体声明
     struct StructDecl : public IAstDecl
     {
-        StringRef mName;                  // 结构体名称
-        std::vector<StringRef> mParent;   // 父类结构体
-        std::vector<AstDeclRef> mMembers; // 成员声明
-        StructDecl() : IAstDecl(DeclKind::Struct)
-        {
-        }
+        StringRef mName;                    // 结构体名称
+        std::vector<StringRef> mParent;     // 父类结构体
+        std::vector<AstMemberRef> mMembers; // 成员声明
+        ScopeEnum mDefaultScope;            // 默认成员作用域
+        StructDecl() : IAstDecl(DeclKind::Struct), mDefaultScope(ScopeEnum::Public) {}
     };
     // 委托声明
     struct EntrustDecl : public IAstDecl
     {
         StringRef mName;                // 委托名称
-        AstFlag mFlag;                  // 函数权限标记
         AstType mReturn;                // 函数返回值
+        bool mIsObj;                    // 对象函数委托
         std::vector<ParamItem> mParams; // 参数声明列表
         EntrustDecl() : IAstDecl(DeclKind::Entrust)
         {
         }
     };
+
+    struct InterfaceItem
+    {
+        std::vector<StringRef> mName; // 接口名称
+    };
     // 接口声明
     struct InterfaceDecl : public IAstDecl
     {
-        StringRef mName;                    // 接口名称
-        std::vector<FunctionDecl> mMembers; // 函数声明
-        InterfaceDecl() : IAstDecl(DeclKind::Interface)
-        {
-        }
+        StringRef mName;                        // 接口名称
+        std::vector<FunctionDecl> mMembers;     // 函数声明
+        std::vector<InterfaceItem> mInterfaces; // 接口列表
+        InterfaceDecl() : IAstDecl(DeclKind::Interface) {}
     };
     // 类声明
     struct ClassDecl : public IAstDecl
     {
-        StringRef mName;                                 // 类名称
-        std::vector<StringRef> mParent;                  // 父类
-        std::vector<std::vector<StringRef>> mInterfaces; // 接口列表
-        std::vector<AstDeclRef> mMembers;                // 成员声明
-        ClassDecl() : IAstDecl(DeclKind::Class)
-        {
-        }
+        StringRef mName;                        // 类名称
+        std::vector<StringRef> mParent;         // 父类
+        std::vector<InterfaceItem> mInterfaces; // 接口列表
+        std::vector<AstMemberRef> mMembers;     // 成员声明
+        ScopeEnum mDefaultScope;                // 默认成员作用域
+        ClassDecl() : IAstDecl(DeclKind::Class), mDefaultScope(ScopeEnum::Public) {}
     };
-    // 实例化声明
-    struct UsingDecl : public IAstDecl
-    {
-        UsingDecl() : IAstDecl(DeclKind::Unknown)
-        {
-        }
-    };
+    /* // 实例化声明
+     struct UsingDecl : public IAstDecl
+     {
+         UsingDecl() : IAstDecl(DeclKind::Unknown)
+         {
+         }
+     };*/
     //----------------------表达式-------------
 
     // 标识符表达式
@@ -548,13 +620,20 @@ namespace air
         AstExpRef mLarge; // 大的约束：b
         RangExp() : IAstExp(ExpKind::Rang) {}
     };
-    // 块表达式
-    struct BlockExp : public IAstExp
+    // 块表达式项
+    struct BlockExpItem
     {
         AstExpRef mID;  // 成员或者索引
         AstExpRef mVal; // 值表达式
-        BlockExp() : IAstExp(ExpKind::Block) {}
     };
+    // 块表达式
+    struct BlockExp : public IAstExp
+    {
+        bool mIndex; // 是否是成员索引形式:{exp:exp,Exp:{}}
+        std::vector<BlockExpItem> mItems;
+        BlockExp() : IAstExp(ExpKind::Block), mIndex(false) {}
+    };
+
     // 匿名表达式
     struct LambdaExp : public IAstExp
     {

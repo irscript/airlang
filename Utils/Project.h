@@ -6,6 +6,14 @@
 #include <Utils/FileUnit.h>
 namespace air
 {
+    // 系统类型
+    struct SysType
+    {
+        StringRef mName;  // 类型名称
+        uint32_t mSize;   // 类型大小：按照字节算
+        uint32_t mAllign; // 类型对齐大小：按照字节算
+    };
+
     // 项目编译组织单元
     struct Project
     {
@@ -17,6 +25,10 @@ namespace air
         std::string mBuildDir;        // 构建输出的目录
         std::set<std::string> mDirs;  // 搜索的目录
         std::set<std::string> mFiles; // 编译的文件
+
+        std::map<StringRef, SysType> mSysType; // 系统类型
+
+        uint32_t mAddressSize; // 地址大小
 
         FileCenter mFileUnits; // 编译文件中心
 
@@ -31,8 +43,8 @@ namespace air
         // 解析文件
         void ParserFile(const std::string &szFile);
 
-        // 语义分析
-        void Semantic();
+        // 初始化系统类型系统: 地址大小按照字节算
+        void InitSysType(uint32_t addrsize);
     };
 
     struct ProjectCenter

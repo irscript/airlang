@@ -518,6 +518,58 @@ namespace air
 
     void AstDumper::Statament(AstStmRef &stm, const std::string &szTab)
     {
+        if (stm.get() == nullptr)
+            return;
+        switch (stm->GetKind())
+        {
+        case StmKind::Var:
+            VarStatament(stm, szTab);
+            break;
+        case StmKind::Exp:
+            ExpStatament(stm, szTab);
+            break;
+        case StmKind::If:
+            IfStatament(stm, szTab);
+            break;
+        case StmKind::Switch:
+            SwitchStatament(stm, szTab);
+            break;
+
+        case StmKind::For:
+            ForStatament(stm, szTab);
+            break;
+        case StmKind::While:
+            WhileStatament(stm, szTab);
+            break;
+        case StmKind::DoWhile:
+            DoWhileStatament(stm, szTab);
+            break;
+
+        case StmKind::Try:
+            TryStatament(stm, szTab);
+            break;
+        case StmKind::Label:
+            LableStatament(stm, szTab);
+            break;
+        case StmKind::Goto:
+            GotoStatament(stm, szTab);
+            break;
+        case StmKind::Break:
+            BreakStatament(stm, szTab);
+            break;
+        case StmKind::Continue:
+            ContinueStatament(stm, szTab);
+            break;
+        case StmKind::Return:
+            ReturnStatament(stm, szTab);
+            break;
+        default:
+            Error("未知语句\n");
+            break;
+        }
+    }
+    void AstDumper::BlockStatament(AstStmRef &stm, const std::string &szTab)
+    {
     }
     void AstDumper::VarStatament(AstStmRef &stm, const std::string &szTab)
     {

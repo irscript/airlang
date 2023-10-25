@@ -291,6 +291,10 @@ namespace air
 
     void Project::ParserProj()
     {
+        // 初始化类型系统
+
+        InitSysType(8);
+
         std::string szPath;
         float icnt = 0;
         uint32_t errcnt = 0; // 错误计数
@@ -362,8 +366,56 @@ namespace air
             return;
 
         // 生成对应的文件单元
-        auto& unit = mFileUnits.GetFileUint(fileRef);
+        auto &unit = mFileUnits.GetFileUint(fileRef);
         // 开始语法解析
         Parser parser(unit, mStringPool, mFilePath);
+    }
+
+    void Project::InitSysType(uint32_t addrsize)
+    {
+        mAddressSize = addrsize;
+
+        auto name = mStringPool.RefString("void");
+        mSysType.insert({name, {name, 0, 0}});
+
+        name = mStringPool.RefString("bool");
+        mSysType.insert({name, {name, 1, 1}});
+
+        name = mStringPool.RefString("int8");
+        mSysType.insert({name, {name, 1, 1}});
+        name = mStringPool.RefString("int16");
+        mSysType.insert({name, {name, 2, 2}});
+        name = mStringPool.RefString("int32");
+        mSysType.insert({name, {name, 4, 4}});
+        name = mStringPool.RefString("int64");
+        mSysType.insert({name, {name, 8, addrsize}});
+
+        name = mStringPool.RefString("uint8");
+        mSysType.insert({name, {name, 1, 1}});
+        name = mStringPool.RefString("uint16");
+        mSysType.insert({name, {name, 2, 2}});
+        name = mStringPool.RefString("uint32");
+        mSysType.insert({name, {name, 4, 4}});
+        name = mStringPool.RefString("uint64");
+        mSysType.insert({name, {name, 8, addrsize}});
+
+        name = mStringPool.RefString("sint");
+        mSysType.insert({name, {name, addrsize, addrsize}});
+        name = mStringPool.RefString("uint");
+        mSysType.insert({name, {name, addrsize, addrsize}});
+
+        name = mStringPool.RefString("flt32");
+        mSysType.insert({name, {name, 4, 4}});
+        name = mStringPool.RefString("flt64");
+        mSysType.insert({name, {name, 8, addrsize}});
+
+        name = mStringPool.RefString("uintptr");
+        mSysType.insert({name, {name, addrsize, addrsize}});
+        name = mStringPool.RefString("cstring");
+        mSysType.insert({name, {name, addrsize, addrsize}});
+        name = mStringPool.RefString("string");
+        mSysType.insert({name, {name, addrsize, addrsize}});
+        name = mStringPool.RefString("char");
+        mSysType.insert({name, {name, 4, 4}});
     }
 }

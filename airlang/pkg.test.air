@@ -44,4 +44,37 @@ static void fun(sint[,] a){
     try{}
     catch(Exp e){}
     finally{}
+
+}
+
+struct Test:base{
+protected:
+    int32[,] var;
+    union{
+        int64 jk;
+        struct{
+            int32 j;
+            int32 k;
+        }
+    }
+
+    void fun(){}
+}
+
+interface inf[base,base2]{
+    void func();
+    void func2();
+}
+
+class cclss : parent [inf]{
+    int32[,] var;
+    union{
+        int64 jk;
+        struct{
+            int32 j;
+            int32 k;
+        }
+    }
+    void func();
+    void func2();
 }

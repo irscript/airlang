@@ -41,12 +41,14 @@ namespace air
             return find->second;
         }
 
+        // 基本类型信息
+
     private:
         // 关键字与枚举映射
         static std::map<std::string, KeyEnum> KeyMap;     // 关键字
         static std::map<std::string, MacroEnum> MacroMap; // 宏关键字
         static std::map<OpEnum, int32_t> OpPriorityMap;   // 操作符优先级映射
-
+        
         static void InitKeyMap();
         static void InitMacroMap();
         static void InitOpPriorityMap();

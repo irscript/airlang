@@ -9,7 +9,7 @@ namespace air
         if (res.second == false)
             res.first->second += 1;
 
-        return (StringRef)&res.first->first;
+        return (StringRef)&(res.first->first);
     }
 
     void StringPool::UnRefString(const StringRef szRefs)

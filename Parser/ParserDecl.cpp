@@ -14,7 +14,7 @@ namespace air
             throw ErrorExpception("打开文件失败!");
 
         // 打印解析到哪个文件
-        Print("编译 %s\n", unit.mFile->c_str());
+        // Print("编译 %s\n", unit.mFile->c_str());
 
         // 解析包名
         GetPackage();
@@ -482,8 +482,24 @@ namespace air
     void Parser::Variable(VariableDecl &decl)
     {
         auto tok = mLexer.GetNext();
+        // 位域
+        if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::Colon)
+        {
+            tok = mLexer.GetNext();
+            if (tok.kind != TkKind::IntegerLiteral)
+            {
+                Error("    line:  %d\n", tok.pos.mLine);
+                Error("    tok:  %s\n", tok.text.c_str());
+                throw ErrorExpception("缺少位域宽度！");
+            }
+            uint64_t val = 0;
+            StringRef szType;
+            tok.GetIntVal(val, mPool, szType);
+            decl.mBitFiled = (uint32_t)val;
+            tok = mLexer.GetNext();
+        }
         // 静态数组: id[exp,exp]
-        if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::OpenBracket)
+        else if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::OpenBracket)
         {
             while (true)
             {
@@ -529,9 +545,25 @@ namespace air
                 }
                 vardecl->mName = mPool.RefString(tok.text);
                 vardecl->mStartPos = tok.pos;
-                // 静态数组
+
                 tok = mLexer.GetNext();
-                if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::OpenBracket)
+                // 位域
+                if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::Colon)
+                {
+                    tok = mLexer.GetNext();
+                    if (tok.kind != TkKind::IntegerLiteral)
+                    {
+                        Error("    line:  %d\n", tok.pos.mLine);
+                        Error("    tok:  %s\n", tok.text.c_str());
+                        throw ErrorExpception("缺少位域宽度！");
+                    }
+                    uint64_t val = 0;
+                    StringRef szType;
+                    tok.GetIntVal(val, mPool, szType);
+                    decl.mBitFiled = (uint32_t)val;
+                    tok = mLexer.GetNext();
+                } // 静态数组
+                else if (tok.kind == TkKind::Seperator && tok.code.sp == SpEnum::OpenBracket)
                 {
                     while (true)
                     {

@@ -49,7 +49,7 @@ namespace air
         Entrust, // 委托
         Class,   // 结构体
     };
-
+    struct FileUnit;
     // 符号
     struct AstSymbol
     {
@@ -68,18 +68,35 @@ namespace air
 
         union
         {
-            uintptr_t mDef;     // 定义指针
-            IAstNode *mNode;    // 语句节点项
-            ImportItems *mFile; // 文件依赖项
+            uintptr_t mDef;  // 定义指针
+            IAstNode *mNode; // 语句节点项
+            FileUnit *mFile; // 文件依赖项
         };
 
+        uint32_t mSize;  // 类型大小
+        uint32_t mAlign; // 对齐大小
+
         AstSymbol(StringRef name, SymbolKind kind, uintptr_t def)
-            : mName(name), mKind(kind), mDef(def), mAttributes(0) {}
+            : mName(name), mKind(kind), mDef(def),
+              mAttributes(0), mSize(0), mAlign(0) {}
     };
 
     // 符号表
     using AstSymbolTable = std::map<StringRef, AstSymbol>;
 
+    // 表达式的值
+    struct ExpValue
+    {
+        StringRef mType;
+        union
+        {
+            int64_t ival;
+            uint64_t uval;
+            flt64_t fval;
+        };
+        ExpValue()
+            : mType(nullptr), uval(0) {}
+    };
     // 表达式类别
     enum class ExpKind : uint32_t
     {
@@ -118,11 +135,13 @@ namespace air
     // 表达式基类
     struct IAstExp : public IAstNode
     {
-
+        ExpValue mVaule; // 常量值
+        bool mIsCstVal;
         IAstExp(ExpKind kind = ExpKind::Unknown)
-            : IAstNode(), mExpKind(kind) {}
+            : IAstNode(), mExpKind(kind), mIsCstVal(false) {}
 
         inline ExpKind GetKind() { return mExpKind; }
+        inline bool IsConstValue() const { return mIsCstVal == true; }
 
     protected:
         ExpKind mExpKind; // 表达式类别
@@ -158,13 +177,15 @@ namespace air
             uint32_t mPureVir : 1;  // 纯虚函数
             uint32_t mOverride : 1; // 函数重写
             uint32_t mFinal : 1;    // 子类不再重写虚函数函数
+            uint32_t mNoRet : 1;    // 无返回值
         };
     };
 
+    struct SysType;
     // 类型
     struct AstType
     {
-        AstType() : mFlag(0) {}
+        AstType() : mFlag(0), mSymbol(nullptr), mSysType(nullptr) {}
         union
         {
             uint32_t mFlag;
@@ -180,6 +201,12 @@ namespace air
         };
 
         std::vector<StringRef> mName; // 类型字符串：用于后期查找类型 file.class
+                                      // 分析查找的类型
+        AstSymbol *mSymbol;           // 用户自定义类型
+        SysType *mSysType;            // 基本系统类型
+
+        uint32_t mSize;  // 类型大小
+        uint32_t mAlign; // 对齐大小
     };
 
     // 声明类别
@@ -364,10 +391,10 @@ namespace air
     // 枚举声明
     struct EnumDecl : public IAstDecl
     {
-        StringRef mName;              // 枚举类型名称
-        StringRef mBaseType;          // 基础类型
-        std::vector<EnumItem> mEnums; // 枚举项声明列表
-
+        StringRef mName;                       // 枚举类型名称
+        StringRef mBaseType;                   // 基础类型
+        std::vector<EnumItem> mEnums;          // 枚举项声明列表
+        std::map<StringRef, uint64_t> mSymVal; // 枚举符号和枚举值的映射
         EnumDecl() : IAstDecl(DeclKind::Enum)
         {
         }
@@ -401,8 +428,9 @@ namespace air
     // 变量成员
     struct MemberVar : public IMemberItem
     {
+        uint32_t mOffset;   // 偏移
         VariableDecl mDecl; // 成员变量声明
-        MemberVar() : IMemberItem(MemberItemKind::Var) {}
+        MemberVar() : IMemberItem(MemberItemKind::Var), mOffset(0) {}
     };
     // Union成员
     struct MemberUnion : public IMemberItem
@@ -426,11 +454,17 @@ namespace air
     // 结构体声明
     struct StructDecl : public IAstDecl
     {
-        StringRef mName;                    // 结构体名称
-        std::vector<StringRef> mParent;     // 父类结构体
+        StringRef mName;                // 结构体名称
+        std::vector<StringRef> mParent; // 父类结构体
+
         std::vector<AstMemberRef> mMembers; // 成员声明
         ScopeEnum mDefaultScope;            // 默认成员作用域
-        StructDecl() : IAstDecl(DeclKind::Struct), mDefaultScope(ScopeEnum::Public) {}
+
+        AstSymbol *mParentSym;    // 父类定义
+        AstSymbolTable mSymTable; // 符号表
+
+        StructDecl() : IAstDecl(DeclKind::Struct),
+                       mDefaultScope(ScopeEnum::Public), mParentSym(nullptr) {}
     };
     // 委托声明
     struct EntrustDecl : public IAstDecl
@@ -454,6 +488,9 @@ namespace air
         StringRef mName;                        // 接口名称
         std::vector<FunctionDecl> mMembers;     // 函数声明
         std::vector<InterfaceItem> mInterfaces; // 接口列表
+
+        AstSymbolTable mSymTable; // 符号表
+
         InterfaceDecl() : IAstDecl(DeclKind::Interface) {}
     };
     // 类声明
@@ -464,6 +501,9 @@ namespace air
         std::vector<InterfaceItem> mInterfaces; // 接口列表
         std::vector<AstMemberRef> mMembers;     // 成员声明
         ScopeEnum mDefaultScope;                // 默认成员作用域
+
+        AstSymbolTable mSymTable; // 符号表
+
         ClassDecl() : IAstDecl(DeclKind::Class), mDefaultScope(ScopeEnum::Public) {}
     };
     /* // 实例化声明

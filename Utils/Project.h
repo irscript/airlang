@@ -11,7 +11,7 @@ namespace air
     {
         StringRef mName;  // 类型名称
         uint32_t mSize;   // 类型大小：按照字节算
-        uint32_t mAllign; // 类型对齐大小：按照字节算
+        uint32_t mAlign; // 类型对齐大小：按照字节算
     };
 
     // 项目编译组织单元

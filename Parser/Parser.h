@@ -58,7 +58,7 @@ namespace air
         AstDeclRef Entrust(ScopeEnum scope);
         // 解析接口
         AstDeclRef Interface(ScopeEnum scope);
-        void InterfaceItem(FunctionDecl& func);
+        void InterfaceItem(FunctionDecl &func);
         // 解析类
         AstDeclRef Class(ScopeEnum scope);
 

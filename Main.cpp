@@ -30,7 +30,7 @@ int main(int argc, char **argv)
     auto &projMgr = ProjectCenter::Instance();
     projMgr.Init();
     // 加载项目配置
-    if (projMgr.LoadFile("E:\\Project\\Compiler\\airlang\\project.aircfg") == false)
+    if (projMgr.LoadFile("G:\\Compiler\\airlang\\project.aircfg") == false)
     {
         Error("解析项目配置文件失败！\n");
         return 0;

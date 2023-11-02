@@ -14,6 +14,7 @@ namespace air
         KeyMap.insert({"using", KeyEnum::Using});
 
         KeyMap.insert({"void", KeyEnum::Void});
+        KeyMap.insert({"any", KeyEnum::Any});
         KeyMap.insert({"bool", KeyEnum::Bool});
 
         KeyMap.insert({"int8", KeyEnum::Int8});

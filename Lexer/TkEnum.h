@@ -102,6 +102,7 @@ namespace air
 
         // 基本类型
         Void,
+        Any,
         Bool,
         Int8,
         Int16,

@@ -5,6 +5,7 @@
 #include <Utils/FileHelp.h>
 #include <Parser/Parser.h>
 #include <Parser/AstDump.h>
+#include <Parser/Semantic.h>
 namespace air
 {
     ProjectCenter ProjectCenter::mInstance;
@@ -304,6 +305,7 @@ namespace air
             try
             {
                 Info("[ %3u %% ]: ", uint32_t((icnt / mFiles.size()) * 100));
+                Print("编译 %s\n", file.c_str());
                 ParserFile(file);
                 ++icnt;
             }
@@ -320,17 +322,9 @@ namespace air
                 break;
             }
         }
-        if (errcnt == 0)
-        {
-            Info("[ 100 %% ]: 编译完成！\n");
-            for (auto unit : mFileUnits.mFileUnits)
-            {
-                AstDumper dump(unit.second);
-            }
-        }
 
-        else
-            Print("编译结束！总数：%4u\t正确: %4u\t错误: %4u\n", total, total - errcnt, errcnt);
+        errcnt == 0 ? Info("[ 100 %% ]: 编译完成！\n") : Info("存在错误！\n");
+        Info("\n总数：%u\t正确: %u\t错误: %u\n\n", total, total - errcnt, errcnt);
     }
 
     void Project::GetFilePath(const std::string &szFile)
@@ -369,6 +363,15 @@ namespace air
         auto &unit = mFileUnits.GetFileUint(fileRef);
         // 开始语法解析
         Parser parser(unit, mStringPool, mFilePath);
+        // 查看依赖的文件是否解析
+        for (auto item : unit.mImports.mFiles)
+        {
+            if (mFileUnits.CheckFileUint(item) == false)
+                ParserFile(*item);
+        }
+        // 开始符号表构建
+        Semanticer anly(unit, mFileUnits, mStringPool,mSysType,mAddressSize);
+        // 开始语义分析
     }
 
     void Project::InitSysType(uint32_t addrsize)
@@ -377,6 +380,9 @@ namespace air
 
         auto name = mStringPool.RefString("void");
         mSysType.insert({name, {name, 0, 0}});
+
+        name = mStringPool.RefString("any");
+        mSysType.insert({name, {name, addrsize + 8, addrsize}});
 
         name = mStringPool.RefString("bool");
         mSysType.insert({name, {name, 1, 1}});
